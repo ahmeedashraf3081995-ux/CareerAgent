@@ -6,7 +6,6 @@ from src.services.job_pre_filter import pre_filter_jobs
 
 
 
-
 def clean_jobs(jobs):
 
     unique = []
@@ -16,43 +15,26 @@ def clean_jobs(jobs):
 
     for job in jobs:
 
-
         key = (
 
-            job.get(
-                "job_title",
-                ""
-            )
-            .lower()
+            job.get("job_title", "").lower()
 
             +
 
-            job.get(
-                "company",
-                ""
-            )
-            .lower()
+            job.get("company", "").lower()
 
             +
 
-            job.get(
-                "location",
-                ""
-            )
-            .lower()
+            job.get("location", "").lower()
 
         )
 
 
         if key not in seen:
 
-            seen.add(
-                key
-            )
+            seen.add(key)
 
-            unique.append(
-                job
-            )
+            unique.append(job)
 
 
     return unique
@@ -65,7 +47,6 @@ def extract_job_filters(jobs):
 
 
     filters = {
-
 
         "titles": [],
 
@@ -80,49 +61,29 @@ def extract_job_filters(jobs):
     for job in jobs:
 
 
-        title = job.get(
-            "job_title",
-            ""
-        )
+        title = job.get("job_title", "")
 
+        company = job.get("company", "")
 
-        company = job.get(
-            "company",
-            ""
-        )
-
-
-        location = job.get(
-            "location",
-            ""
-        )
+        location = job.get("location", "")
 
 
 
         if title and title not in filters["titles"]:
 
-
-            filters["titles"].append(
-                title
-            )
+            filters["titles"].append(title)
 
 
 
         if company and company not in filters["companies"]:
 
-
-            filters["companies"].append(
-                company
-            )
+            filters["companies"].append(company)
 
 
 
         if location and location not in filters["locations"]:
 
-
-            filters["locations"].append(
-                location
-            )
+            filters["locations"].append(location)
 
 
 
@@ -179,12 +140,9 @@ def search_jobs(parameters):
 
 
 
-    # ==========================
-    # Default Search
-    # ==========================
+    # Default titles
 
     if not job_titles:
-
 
         job_titles = [
 
@@ -198,9 +156,7 @@ def search_jobs(parameters):
 
 
 
-    # ==========================
-    # Expand Titles
-    # ==========================
+    # Expand titles
 
     job_titles = expand_titles(
 
@@ -210,31 +166,17 @@ def search_jobs(parameters):
 
 
 
-    print(
-        "Expanded titles:"
-    )
 
-
-    print(
-        job_titles
-    )
-
-
-
-
-
-    # ==========================
-    # Default Cities
-    # ==========================
 
     if not cities:
-
 
         cities = [
 
             "Dubai"
 
         ]
+
+
 
 
 
@@ -273,11 +215,6 @@ def search_jobs(parameters):
             for job in jobs:
 
 
-
-                # --------------------------
-                # Company Filter
-                # --------------------------
-
                 if companies:
 
 
@@ -300,10 +237,7 @@ def search_jobs(parameters):
 
                         if company.lower() in company_name:
 
-
                             allowed = True
-
-
 
                             break
 
@@ -311,15 +245,11 @@ def search_jobs(parameters):
 
                     if not allowed:
 
-
                         continue
 
 
 
-
-                results.append(
-                    job
-                )
+                results.append(job)
 
 
 
@@ -338,16 +268,9 @@ def search_jobs(parameters):
 
 
 
+    # Remove duplicates
 
-    # ==========================
-    # Remove Duplicates
-    # ==========================
-
-    results = clean_jobs(
-
-        results
-
-    )
+    results = clean_jobs(results)
 
 
 
@@ -359,6 +282,31 @@ def search_jobs(parameters):
 
     )
 
+
+
+
+
+    # ==========================
+    # Load descriptions FIRST
+    # ==========================
+
+    results = load_descriptions(
+
+        results,
+
+        limit=50
+
+    )
+
+
+
+    print(
+
+        "Descriptions loaded:",
+
+        len(results)
+
+    )
 
 
 
@@ -398,36 +346,6 @@ def search_jobs(parameters):
 
 
 
-    # ==========================
-    # Load Descriptions
-    # ==========================
-
-    results = load_descriptions(
-
-        results
-
-    )
-
-
-
-    print(
-
-        "Descriptions loaded:",
-
-        len(results)
-
-    )
-
-
-
-
-
-
-
-    # ==========================
-    # Save Filters
-    # ==========================
-
     try:
 
 
@@ -451,7 +369,6 @@ def search_jobs(parameters):
             e
 
         )
-
 
 
 

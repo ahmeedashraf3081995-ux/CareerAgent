@@ -1,17 +1,24 @@
 from src.scrapers.linkedin_scraper import extract_job_details
+import time
 
 
 
-def load_descriptions(jobs, limit=30):
+
+def load_descriptions(jobs, limit=50):
+
 
     """
-    Load job descriptions from LinkedIn.
 
-    We limit extraction to avoid CPU overload
-    on Streamlit Cloud while keeping results.
+    Load LinkedIn descriptions.
+
+    Limited to protect Streamlit Cloud resources.
+
     """
+
+
 
     loaded = 0
+
 
 
     for job in jobs:
@@ -68,12 +75,18 @@ def load_descriptions(jobs, limit=30):
 
 
 
+            # avoid hammering LinkedIn
+
+            time.sleep(0.5)
+
+
+
         except Exception as e:
 
 
             print(
 
-                "Description loader error:",
+                "Description error:",
 
                 e
 
@@ -85,13 +98,13 @@ def load_descriptions(jobs, limit=30):
 
 
 
-    # Make sure every job has the field
+
+    # Ensure field exists
 
     for job in jobs:
 
 
         if "description" not in job:
-
 
             job["description"] = ""
 
