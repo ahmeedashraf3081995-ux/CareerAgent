@@ -33,11 +33,17 @@ def scrape_linkedin(
 
             headless=True,
 
+            executable_path="/usr/bin/chromium",
+
             args=[
 
                 "--no-sandbox",
 
-                "--disable-dev-shm-usage"
+                "--disable-dev-shm-usage",
+
+                "--disable-gpu",
+
+                "--disable-software-rasterizer"
 
             ]
 
@@ -48,9 +54,9 @@ def scrape_linkedin(
 
             viewport={
 
-                "width":1920,
+                "width": 1920,
 
-                "height":1080
+                "height": 1080
 
             }
 
@@ -97,8 +103,11 @@ def scrape_linkedin(
 
 
                 print(
+
                     "Opening:",
+
                     url
+
                 )
 
 
@@ -107,7 +116,9 @@ def scrape_linkedin(
 
                     url,
 
-                    timeout=60000
+                    timeout=60000,
+
+                    wait_until="domcontentloaded"
 
                 )
 
@@ -122,7 +133,6 @@ def scrape_linkedin(
                     ".base-search-card"
 
                 )
-
 
 
                 count = cards.count()
@@ -238,7 +248,7 @@ def scrape_linkedin(
 
                         print(
 
-                            "Job skipped:",
+                            "Job card skipped:",
 
                             e
 
@@ -251,7 +261,7 @@ def scrape_linkedin(
 
             print(
 
-                "LinkedIn error:",
+                "LinkedIn scraper error:",
 
                 e
 
@@ -268,7 +278,7 @@ def scrape_linkedin(
 
     print(
 
-        "Total jobs:",
+        "Total collected:",
 
         len(jobs)
 
