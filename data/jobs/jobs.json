@@ -1,0 +1,54 @@
+[
+    {
+        "company": "Amazon",
+        "title": "Senior Demand Planner",
+        "industry": "Technology",
+        "location": "Calgary",
+        "skills": [
+            "Demand Forecasting",
+            "S&OP",
+            "Inventory Optimization",
+            "SAP"
+        ],
+        "min_years_experience": 5,
+        "target_locations": [
+            "Canada",
+            "UAE"
+        ],
+        "salary_per_month": "AED 30000"
+    },
+    {
+        "company": "P&G",
+        "title": "Supply Planning Manager",
+        "industry": "FMCG",
+        "location": "Toronto",
+        "skills": [
+            "Supply Planning",
+            "Forecasting",
+            "SAP",
+            "Excel"
+        ],
+        "min_years_experience": 7,
+        "target_locations": [
+            "Canada"
+        ],
+        "salary_per_month": "AED 28000"
+    },
+    {
+        "company": "Samsung",
+        "title": "Demand Planning Manager",
+        "industry": "Technology",
+        "location": "Dubai",
+        "skills": [
+            "Demand Forecasting",
+            "S&OP",
+            "Power BI",
+            "Inventory Optimization"
+        ],
+        "min_years_experience": 6,
+        "target_locations": [
+            "UAE"
+        ],
+        "salary_per_month": "AED 25000"
+    }
+]

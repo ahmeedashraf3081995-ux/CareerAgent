@@ -1,0 +1,51 @@
+{
+    "name": "Ahmed Ashraf EL Sayed Abdelbary",
+    "years_experience": "6+ years",
+    "current_role": "Supply & Demand Planner",
+    "current_company": "",
+    "companies": [
+        {
+            "name": "Samsung Electronics",
+            "role": "Assistant Manager – Demand & Supply Planning"
+        },
+        {
+            "name": "Eyewa Retail",
+            "role": "Senior Planner"
+        },
+        {
+            "name": "MAGRABi Retail",
+            "role": "Regional Demand Planning Lead - MENA"
+        },
+        {
+            "name": "LafargeHolcim",
+            "role": "Material Requirement Planning (MRP) Engineer"
+        }
+    ],
+    "skills": [
+        "Demand Forecasting & Sales Planning (Baseline, Promo, Seasonal)",
+        "Cross-Functional Collaboration (Sales, Marketing, Finance, Operations, Vendor Management)",
+        "Data Analytics & Automation (Excel VBA, Power Query, SAP)",
+        "Continuous Improvement & Process Optimization"
+    ],
+    "tools": [],
+    "education": [
+        {
+            "institution": "Massachusetts Institute of Technology on edX",
+            "program_name": "MITx MicroMasters Program in Supply Chain Management",
+            "start_date": "Sep 2021",
+            "end_date": "2023"
+        },
+        {
+            "institution": "London South Bank University (LSBU)",
+            "degree": "Bachelor's degree, Mechanical Engineering",
+            "year_start": "2014",
+            "year_end": "2019"
+        }
+    ],
+    "responsibilities": [],
+    "verified_achievements": [
+        "SAP MRP Migration Project: Reduced inventory value by 8.5M EGP and maintenance costs by 3.9M EGP",
+        "MORE & SMILE Implementation (MAGRABi): leading to 50% sales growth for MARCOLIN & 56% for SAFILO.",
+        "Building Automated Stores Replenishment Tool using Excel Power Query: Reducing replenishment cycle from 6 to 1 hour, increasing efficiency by 85%, and optimizing best-selling SKUs in stores from 15% to 90%"
+    ]
+}

@@ -1,0 +1,25 @@
+{
+    "match_score_percentage": 95,
+    "recommendation": "Excellent Match",
+    "score_breakdown": {
+        "skills": 40,
+        "experience": 25,
+        "responsibilities": 25,
+        "tools": 0,
+        "industry": 5
+    },
+    "strong_matches": [
+        "S&OP (Supply Chain Operating Plan)",
+        "Inventory Optimization",
+        "Demand Forecasting",
+        "SAP"
+    ],
+    "missing_skills": [],
+    "missing_tools": [],
+    "experience_match": "Candidate experience aligns with job requirements.",
+    "cv_improvement_suggestions": [
+        "Highlight relevant forecasting and planning achievements.",
+        "Match CV keywords with job description.",
+        "Emphasize measurable business impact."
+    ]
+}

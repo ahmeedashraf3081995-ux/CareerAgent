@@ -1,0 +1,98 @@
+{
+  "candidate_name": "Ahmed Ashraf El Sayed Abdelbary",
+  "email": "Ameed.Ashraf@outlook.com",
+  "phone": "+971582938913/ +201004621431",
+  "location": "Dubai UAE / New Cairo, Egypt",
+  "education": [
+    {
+      "institution": "Massachusetts Institute of Technology on edX",
+      "program_name": "MITx MicroMasters Program in Supply Chain Management",
+      "start_date": "Sep 2021",
+      "end_date": "2023"
+    },
+    {
+      "institution": "London South Bank University (LSBU)",
+      "degree": "Bachelor's degree, Mechanical Engineering",
+      "year_start": "2014",
+      "year_end": "2019"
+    }
+  ],
+  "work_experience": [
+    {
+      "company_name": "Samsung Electronics",
+      "position": "Assistant Manager – Demand & Supply Planning - MENA",
+      "start_date": "FEB 2026",
+      "end_date": "Present"
+    },
+    {
+      "company_name": "Eyewa Retail",
+      "position": "Senior Planner – GCC",
+      "start_date": "DEC 2023",
+      "end_date": "FEB 2026"
+    },
+    {
+      "company_name": "MAGRABi Retail",
+      "position": "Regional Demand Planning Lead - MENA",
+      "start_date": "Aug 2021",
+      "end_date": "DEC 2023"
+    },
+    {
+      "company_name": "LafargeHolcim",
+      "position": "Material Requirement Planning (MRP) Engineer",
+      "start_date": "Aug 2019",
+      "end_date": "July 2021"
+    }
+  ],
+  "skills": [
+    "Demand Forecasting & Sales Planning (Baseline, Promo, Seasonal)",
+    "Cross-Functional Collaboration (Sales, Marketing, Finance, Operations, Vendor Management)",
+    "Data Analytics & Automation (Excel VBA, Power Query, SAP)",
+    "Continuous Improvement & Process Optimization"
+  ],
+  "software": [
+    "SAP",
+    "Excel (VBA, Power Query)"
+  ],
+  "languages": [
+    {
+      "language": "Arabic",
+      "level": "Native"
+    },
+    {
+      "language": "English",
+      "score": 7
+    }
+  ],
+  "certifications": [
+    "SAP MRP Migration Project (Holcim): Reduced inventory value by 8.5M EGP and maintenance costs by 3.9M EGP",
+    "MORE & SMILE Implementation (MAGRABi): leading to 50% sales growth for MARCOLIN & 56% for SAFILO.",
+    "Building Automated Stores Replenishment Tool using Excel Power Query (Eyewa): Reducing replenishment cycle from 6 to 1 hour “85% efficiency increase” and optimizing best-selling SKUs in stores “In stock rate of 90% vs 15% before”"
+  ],
+  "career_fields": [
+    "Supply Chain",
+    "Operations"
+  ],
+  "career_strengths": [],
+  "career_gaps": [],
+  "recommended_job_titles": [
+    "Supply Chain Coordinator",
+    "Supply Chain Analyst",
+    "Procurement Assistant",
+    "Inventory Coordinator",
+    "Operations Coordinator"
+  ],
+  "seniority_level": "Senior Level",
+  "years_experience": "7 years",
+  "linkedin_search_keywords": [
+    "Supply Chain Coordinator",
+    "Supply Chain Analyst",
+    "Procurement Assistant",
+    "Inventory Coordinator",
+    "Operations Coordinator"
+  ],
+  "excluded_job_titles": [
+    "Manager",
+    "Director",
+    "Head"
+  ]
+}

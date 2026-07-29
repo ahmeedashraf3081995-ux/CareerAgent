@@ -1,0 +1,24 @@
+[
+  {
+    "company": "Amazon",
+    "job_title": "Senior Demand Planner",
+    "location": "Dubai",
+    "url": "https://www.amazon.jobs",
+    "match_score": "95",
+    "status": "Applied",
+    "application_date": "2026-07-28",
+    "follow_up": "2026-08-05",
+    "notes": "Applied through careers website"
+  },
+  {
+    "company": "Amazon",
+    "job_title": "Senior Demand Planner",
+    "location": "Dubai",
+    "url": " https://www.amazon.jobs",
+    "match_score": "95",
+    "status": "Applied",
+    "application_date": "2026-07-28",
+    "follow_up": "2026-08-05",
+    "notes": "Applied through careers website"
+  }
+]

@@ -1,0 +1,40 @@
+{
+    "target_role": "Demand & Supply Planning Manager",
+    "summary_improvement": "Enhanced demand and supply planning capabilities, improved forecasting accuracy, optimized inventory levels, and enhanced cross-functional collaboration.",
+    "keywords_to_emphasize": [
+        "Demand Forecasting",
+        "Supply Planning",
+        "SAP",
+        "Inventory Management"
+    ],
+    "experience_focus": [
+        {
+            "company": "Samsung Electronics",
+            "points_to_highlight": [
+                "Led end-to-end service parts planning across MENA, ensuring availability within defined lead time.",
+                "Managed parts master data including service BOM aligned with market benchmarks and margin targets."
+            ]
+        },
+        {
+            "company": "Eyewa Retail",
+            "points_to_highlight": [
+                "Implemented MORE & SMILE Implementation (MAGRABi) leading to 50% sales growth for MARCOLIN & 56% for SAFILO.",
+                "Built Automated Stores Replenishment Tool using Excel Power Query, reducing replenishment cycle from 6 to 1 hour and optimizing best-selling SKUs in stores by increasing in stock rate of 90% vs 15% before."
+            ]
+        }
+    ],
+    "skills_to_prioritize": [
+        "Demand Forecasting & Sales Planning (Baseline, Promo, Seasonal)",
+        "Cross-Functional Collaboration (Sales, Marketing, Finance, Operations, Vendor Management)",
+        "Data Analytics & Automation (Excel VBA, Power Query, SAP)"
+    ],
+    "cover_letter_angles": [
+        "Highlight achievements in demand and supply planning roles.",
+        "Showcase successful implementation of cross-functional collaboration tools."
+    ],
+    "interview_questions": [
+        "Discuss your experience with forecasting models and how they improved accuracy.",
+        "Explain the process you used to optimize inventory levels across Subs operations.",
+        "Describe a time when you collaborated effectively with other departments to improve parts availability."
+    ]
+}
