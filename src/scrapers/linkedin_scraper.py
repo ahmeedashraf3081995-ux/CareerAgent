@@ -4,6 +4,123 @@ import time
 
 
 
+def create_browser(p):
+
+    browser = p.chromium.launch(
+
+        headless=True,
+
+        executable_path="/usr/bin/chromium",
+
+        args=[
+
+            "--no-sandbox",
+
+            "--disable-dev-shm-usage",
+
+            "--disable-gpu"
+
+        ]
+
+    )
+
+    return browser
+
+
+
+
+
+def extract_job_details(url):
+
+    """
+    Extract LinkedIn job description
+    """
+
+    description = ""
+
+
+    try:
+
+        with sync_playwright() as p:
+
+
+            browser = create_browser(p)
+
+
+            page = browser.new_page()
+
+
+
+            page.goto(
+
+                url,
+
+                timeout=20000,
+
+                wait_until="domcontentloaded"
+
+            )
+
+
+            time.sleep(2)
+
+
+
+            selectors = [
+
+                ".description__text",
+
+                ".show-more-less-html__markup",
+
+                ".jobs-description__content"
+
+            ]
+
+
+
+            for selector in selectors:
+
+
+                element = page.locator(
+
+                    selector
+
+                ).first
+
+
+
+                if element.count() > 0:
+
+
+                    description = element.inner_text().strip()
+
+                    break
+
+
+
+            browser.close()
+
+
+
+    except Exception as e:
+
+
+        print(
+
+            "Description extraction error:",
+
+            e
+
+        )
+
+
+    return description
+
+
+
+
+
+
 def scrape_linkedin(
 
     keyword="Demand Planner",
@@ -16,7 +133,9 @@ def scrape_linkedin(
 
 
     print(
+
         f"Searching LinkedIn: {keyword} - {location}"
+
     )
 
 
@@ -29,24 +148,7 @@ def scrape_linkedin(
     with sync_playwright() as p:
 
 
-        browser = p.chromium.launch(
-
-            headless=True,
-
-            executable_path="/usr/bin/chromium",
-
-            args=[
-
-                "--no-sandbox",
-
-                "--disable-dev-shm-usage",
-
-                "--disable-gpu"
-
-            ]
-
-        )
-
+        browser = create_browser(p)
 
 
         page = browser.new_page(
@@ -60,6 +162,7 @@ def scrape_linkedin(
             }
 
         )
+
 
 
         try:
@@ -102,42 +205,23 @@ def scrape_linkedin(
 
                 print(
 
-                    f"Opening LinkedIn page {page_number + 1}"
+                    f"Opening page {page_number + 1}"
 
                 )
 
 
 
-                try:
+                page.goto(
+
+                    url,
+
+                    timeout=20000,
+
+                    wait_until="domcontentloaded"
+
+                )
 
 
-                    page.goto(
-
-                        url,
-
-                        timeout=20000,
-
-                        wait_until="domcontentloaded"
-
-                    )
-
-
-                except Exception as e:
-
-
-                    print(
-
-                        "Page loading timeout:",
-
-                        e
-
-                    )
-
-                    continue
-
-
-
-                # Allow cards to appear
 
                 time.sleep(1)
 
@@ -299,7 +383,6 @@ def scrape_linkedin(
         len(jobs)
 
     )
-
 
 
     return jobs
