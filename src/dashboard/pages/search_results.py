@@ -1,11 +1,11 @@
 import streamlit as st
 
-from components.job_card import show_job_card
+from src.dashboard.components.job_card import show_job_card
 
 
 
 st.title(
-    "📌 CareerAgent Job Matches"
+    "🎯 CareerAgent Job Matches"
 )
 
 
@@ -27,137 +27,9 @@ if not jobs:
 
 
 
-# ==================================================
-# Dashboard Summary
-# ==================================================
-
-st.subheader(
-    "📊 Search Summary"
-)
-
-
-
-total_jobs = len(jobs)
-
-
-
-excellent = len(
-    [
-        j for j in jobs
-        if "Excellent" in j.get(
-            "match_level",
-            ""
-        )
-    ]
-)
-
-
-
-good = len(
-    [
-        j for j in jobs
-        if "Good" in j.get(
-            "match_level",
-            ""
-        )
-    ]
-)
-
-
-
-partial = len(
-    [
-        j for j in jobs
-        if "Partial" in j.get(
-            "match_level",
-            ""
-        )
-    ]
-)
-
-
-
-average_score = round(
-
-    sum(
-
-        j.get(
-            "match_score",
-            0
-        )
-
-        for j in jobs
-
-    )
-
-    /
-
-    len(jobs)
-
-)
-
-
-
-col1, col2, col3, col4 = st.columns(4)
-
-
-
-with col1:
-
-    st.metric(
-
-        "📄 Total Jobs",
-
-        total_jobs
-
-    )
-
-
-
-with col2:
-
-    st.metric(
-
-        "🔥 Excellent",
-
-        excellent
-
-    )
-
-
-
-with col3:
-
-    st.metric(
-
-        "✅ Good",
-
-        good
-
-    )
-
-
-
-with col4:
-
-    st.metric(
-
-        "📈 Avg Score",
-
-        f"{average_score}%"
-
-    )
-
-
-
-
-st.divider()
-
-
-
-# ==================================================
+# ==========================
 # Sidebar Filters
-# ==================================================
+# ==========================
 
 st.sidebar.header(
     "🔎 Filters"
@@ -165,9 +37,7 @@ st.sidebar.header(
 
 
 
-# --------------------------
-# Job Title
-# --------------------------
+# Job Titles
 
 job_titles = sorted(
 
@@ -177,14 +47,14 @@ job_titles = sorted(
 
             [
 
-                j.get(
+                job.get(
                     "job_title",
                     ""
                 )
 
-                for j in jobs
+                for job in jobs
 
-                if j.get(
+                if job.get(
                     "job_title"
                 )
 
@@ -209,9 +79,7 @@ selected_titles = st.sidebar.multiselect(
 
 
 
-# --------------------------
 # Companies
-# --------------------------
 
 companies = sorted(
 
@@ -221,14 +89,14 @@ companies = sorted(
 
             [
 
-                j.get(
+                job.get(
                     "company",
                     ""
                 )
 
-                for j in jobs
+                for job in jobs
 
-                if j.get(
+                if job.get(
                     "company"
                 )
 
@@ -254,9 +122,7 @@ selected_companies = st.sidebar.multiselect(
 
 
 
-# --------------------------
 # Locations
-# --------------------------
 
 locations = sorted(
 
@@ -266,14 +132,14 @@ locations = sorted(
 
             [
 
-                j.get(
+                job.get(
                     "location",
                     ""
                 )
 
-                for j in jobs
+                for job in jobs
 
-                if j.get(
+                if job.get(
                     "location"
                 )
 
@@ -299,73 +165,25 @@ selected_locations = st.sidebar.multiselect(
 
 
 
-# --------------------------
-# Match Level
-# --------------------------
-
-levels = sorted(
-
-    list(
-
-        set(
-
-            [
-
-                j.get(
-                    "match_level",
-                    ""
-                )
-
-                for j in jobs
-
-                if j.get(
-                    "match_level"
-                )
-
-            ]
-
-        )
-
-    )
-
-)
-
-
-
-selected_levels = st.sidebar.multiselect(
-
-    "Match Level",
-
-    levels
-
-)
-
-
-
-
-
-# --------------------------
-# Score Slider
-# --------------------------
+# Match score
 
 minimum_score = st.sidebar.slider(
 
     "Minimum Match Score",
 
-    0,
+    min_value=0,
 
-    100,
+    max_value=100,
 
-    0
+    value=0
 
 )
 
 
 
 
-# --------------------------
-# Sorting
-# --------------------------
+
+# Sort
 
 sort_option = st.sidebar.selectbox(
 
@@ -374,8 +192,6 @@ sort_option = st.sidebar.selectbox(
     [
 
         "Best Match",
-
-        "Highest Score",
 
         "Company",
 
@@ -389,9 +205,9 @@ sort_option = st.sidebar.selectbox(
 
 
 
-# ==================================================
+# ==========================
 # Apply Filters
-# ==================================================
+# ==========================
 
 filtered_jobs = []
 
@@ -400,70 +216,42 @@ filtered_jobs = []
 for job in jobs:
 
 
-
     if selected_titles:
-
 
         if job.get(
             "job_title"
         ) not in selected_titles:
 
-
             continue
-
 
 
 
     if selected_companies:
 
-
         if job.get(
             "company"
         ) not in selected_companies:
 
-
             continue
-
 
 
 
     if selected_locations:
 
-
         if job.get(
             "location"
         ) not in selected_locations:
 
-
             continue
-
-
-
-
-    if selected_levels:
-
-
-        if job.get(
-            "match_level"
-        ) not in selected_levels:
-
-
-            continue
-
 
 
 
     if job.get(
-
         "match_score",
-
         0
-
     ) < minimum_score:
 
-
         continue
-
 
 
 
@@ -475,24 +263,15 @@ for job in jobs:
 
 
 
-# ==================================================
+# ==========================
 # Sorting
-# ==================================================
+# ==========================
 
-if sort_option in [
-
-    "Best Match",
-
-    "Highest Score"
-
-]:
-
+if sort_option == "Best Match":
 
     filtered_jobs.sort(
 
-        key=lambda x:
-
-        x.get(
+        key=lambda x: x.get(
 
             "match_score",
 
@@ -505,15 +284,11 @@ if sort_option in [
     )
 
 
-
 elif sort_option == "Company":
-
 
     filtered_jobs.sort(
 
-        key=lambda x:
-
-        x.get(
+        key=lambda x: x.get(
 
             "company",
 
@@ -524,15 +299,11 @@ elif sort_option == "Company":
     )
 
 
-
 elif sort_option == "Job Title":
-
 
     filtered_jobs.sort(
 
-        key=lambda x:
-
-        x.get(
+        key=lambda x: x.get(
 
             "job_title",
 
@@ -546,13 +317,9 @@ elif sort_option == "Job Title":
 
 
 
-# ==================================================
-# Results
-# ==================================================
-
 st.success(
 
-    f"{len(filtered_jobs)} jobs displayed"
+    f"{len(filtered_jobs)} jobs found"
 
 )
 
@@ -562,21 +329,8 @@ st.divider()
 
 
 
-if not filtered_jobs:
+for job in filtered_jobs:
 
-
-    st.warning(
-        "No jobs match your filters."
+    show_job_card(
+        job
     )
-
-
-
-else:
-
-
-    for job in filtered_jobs:
-
-
-        show_job_card(
-            job
-        )

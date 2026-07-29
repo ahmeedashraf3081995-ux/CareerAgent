@@ -1,9 +1,6 @@
 import streamlit as st
 
-from services.application_tracker import (
-    save_job,
-    update_job_status
-)
+from src.services.application_tracker import save_job
 
 
 
@@ -12,65 +9,63 @@ def show_job_card(job):
 
 
     score = job.get(
+
         "match_score",
+
         0
+
     )
 
 
     level = job.get(
+
         "match_level",
+
         "Not ranked"
+
     )
 
 
+
     title = job.get(
+
         "job_title",
+
         "Unknown Position"
+
     )
 
 
     company = job.get(
+
         "company",
+
         "Unknown Company"
+
     )
 
 
     location = job.get(
+
         "location",
+
         ""
+
     )
+
 
 
     url = job.get(
+
         "url",
+
         ""
-    )
-
-
-    job_id = (
-
-        url
-
-        or
-
-        (
-
-            title
-
-            +
-
-            company
-
-        )
 
     )
 
 
 
-    # ==========================
     # Header
-    # ==========================
-
 
     st.subheader(
         title
@@ -78,7 +73,7 @@ def show_job_card(job):
 
 
     st.write(
-        f"🏢 **{company}**"
+        f"🏢 {company}"
     )
 
 
@@ -96,7 +91,7 @@ def show_job_card(job):
 
         st.metric(
 
-            "🎯 CV Match",
+            "🎯 Match Score",
 
             f"{score}%"
 
@@ -114,10 +109,7 @@ def show_job_card(job):
 
 
 
-    # ==========================
-    # Match Explanation
-    # ==========================
-
+    # Explanation
 
     reason = job.get(
 
@@ -133,10 +125,9 @@ def show_job_card(job):
 
         with st.expander(
 
-            "🤖 Why this job matches you"
+            "🤖 Why this matches"
 
         ):
-
 
             st.write(
                 reason
@@ -146,10 +137,7 @@ def show_job_card(job):
 
 
 
-    # ==========================
     # Skills
-    # ==========================
-
 
     col1, col2 = st.columns(2)
 
@@ -163,7 +151,7 @@ def show_job_card(job):
         )
 
 
-        matched = job.get(
+        skills = job.get(
 
             "matched_skills",
 
@@ -172,24 +160,18 @@ def show_job_card(job):
         )
 
 
-        if matched:
+        if skills:
 
-
-            for skill in matched:
-
+            for skill in skills:
 
                 st.write(
-
-                    f"✓ {skill}"
-
+                    f"• {skill}"
                 )
-
 
         else:
 
-
             st.write(
-                "No strong overlap found"
+                "No skills detected"
             )
 
 
@@ -200,7 +182,7 @@ def show_job_card(job):
 
 
         st.warning(
-            "⚠️ Skills To Improve"
+            "⚠️ Missing Skills"
         )
 
 
@@ -215,19 +197,13 @@ def show_job_card(job):
 
         if missing:
 
-
             for skill in missing:
 
-
                 st.write(
-
-                    f"+ {skill}"
-
+                    f"• {skill}"
                 )
 
-
         else:
-
 
             st.write(
                 "No missing skills"
@@ -237,14 +213,11 @@ def show_job_card(job):
 
 
 
-    # ==========================
     # Description
-    # ==========================
-
 
     with st.expander(
 
-        "📄 Full Job Description"
+        "📄 Job Description"
 
     ):
 
@@ -260,16 +233,13 @@ def show_job_card(job):
 
         if description:
 
-
             st.write(
                 description
             )
 
-
         else:
 
-
-            st.warning(
+            st.write(
                 "Description not available"
             )
 
@@ -277,12 +247,9 @@ def show_job_card(job):
 
 
 
-    # ==========================
     # Actions
-    # ==========================
 
-
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
 
 
 
@@ -290,7 +257,6 @@ def show_job_card(job):
 
 
         if url:
-
 
             st.link_button(
 
@@ -303,92 +269,26 @@ def show_job_card(job):
 
 
 
-
     with col2:
 
 
         if st.button(
 
-            "❤️ Save",
+            "❤️ Save Job",
 
-            key=f"save_{job_id}"
+            key=f"save_{url}"
 
         ):
 
 
-            saved = save_job(
+            save_job(
                 job
             )
 
 
-            if saved:
-
-
-                st.success(
-                    "Saved"
-                )
-
-            else:
-
-
-                st.info(
-                    "Already saved"
-                )
-
-
-
-
-
-    with col3:
-
-
-        status = st.selectbox(
-
-            "Status",
-
-            [
-
-                "❤️ Saved",
-
-                "📩 Applied",
-
-                "🗣 Interview",
-
-                "✅ Offer",
-
-                "❌ Rejected"
-
-            ],
-
-            key=f"status_{job_id}"
-
-        )
-
-
-
-        if st.button(
-
-            "Update",
-
-            key=f"update_{job_id}"
-
-        ):
-
-
-            update_job_status(
-
-                job_id,
-
-                status
-
-            )
-
-
             st.success(
-                "Status updated"
+                "Saved"
             )
-
-
 
 
 
