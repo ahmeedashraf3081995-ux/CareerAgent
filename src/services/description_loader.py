@@ -1,50 +1,71 @@
-from src.scrapers.linkedin_scraper import create_driver
-from src.scrapers.linkedin_scraper import extract_job_description
-
-
+from src.scrapers.linkedin_scraper import (
+    create_driver,
+    extract_job_details
+)
 
 
 
 def load_descriptions(jobs):
 
+    if not jobs:
 
-    driver = create_driver()
+        return jobs
 
+
+    driver = None
 
 
     try:
 
-
-        for job in jobs:
-
-
-            if job.get(
-                "url"
-            ):
+        driver = create_driver()
 
 
-                print(
-                    "Reading:",
-                    job.get(
-                        "job_title"
-                    )
-                )
+        for index, job in enumerate(jobs):
 
 
-                job["description"] = extract_job_description(
+            url = job.get(
+                "url",
+                ""
+            )
 
-                    driver,
 
-                    job["url"]
+            if not url:
 
-                )
+                continue
+
+
+
+            print(
+                f"Loading description {index+1}/{len(jobs)}"
+            )
+
+
+            job["description"] = extract_job_details(
+
+                driver,
+
+                url
+
+            )
+
+
+
+    except Exception as e:
+
+
+        print(
+            "Description loader error:",
+            e
+        )
 
 
 
     finally:
 
 
-        driver.quit()
+        if driver:
+
+            driver.quit()
 
 
 
