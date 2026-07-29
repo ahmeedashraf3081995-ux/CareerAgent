@@ -1,12 +1,15 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+from webdriver_manager.chrome import ChromeDriverManager
+
 import urllib.parse
 import time
-
 
 
 
@@ -15,12 +18,11 @@ def create_driver():
 
     options = Options()
 
-    options.add_argument(
-        "--headless=new"
-    )
+
+    # Streamlit Cloud compatible
 
     options.add_argument(
-        "--disable-gpu"
+        "--headless=new"
     )
 
     options.add_argument(
@@ -32,11 +34,25 @@ def create_driver():
     )
 
     options.add_argument(
+        "--disable-gpu"
+    )
+
+    options.add_argument(
+        "--disable-blink-features=AutomationControlled"
+    )
+
+    options.add_argument(
         "--window-size=1920,1080"
     )
 
 
+    service = Service(
+        ChromeDriverManager().install()
+    )
+
+
     driver = webdriver.Chrome(
+        service=service,
         options=options
     )
 
@@ -52,10 +68,6 @@ def create_driver():
 
 
 
-# ==================================================
-# Extract Job Description
-# ==================================================
-
 def extract_job_details(driver, url):
 
     description = ""
@@ -68,7 +80,7 @@ def extract_job_details(driver, url):
         )
 
 
-        time.sleep(2)
+        time.sleep(3)
 
 
         elements = driver.find_elements(
@@ -81,7 +93,6 @@ def extract_job_details(driver, url):
 
 
         if elements:
-
 
             description = elements[0].text.strip()
 
@@ -96,32 +107,12 @@ def extract_job_details(driver, url):
         )
 
 
-
     return description
 
 
 
 
 
-# Compatibility function
-# Used by description_loader.py
-
-def extract_job_description(driver, url):
-
-    return extract_job_details(
-        driver,
-        url
-    )
-
-
-
-
-
-
-
-# ==================================================
-# LinkedIn Scraper
-# ==================================================
 
 def scrape_linkedin(
 
@@ -141,9 +132,7 @@ def scrape_linkedin(
     )
 
 
-
     jobs = []
-
 
     own_driver = False
 
@@ -151,11 +140,9 @@ def scrape_linkedin(
 
     if driver is None:
 
-
         driver = create_driver()
 
         own_driver = True
-
 
 
 
@@ -203,7 +190,7 @@ def scrape_linkedin(
 
 
             print(
-                "Page:",
+                "Opening page:",
                 page + 1
             )
 
@@ -246,16 +233,15 @@ def scrape_linkedin(
 
 
                 print(
-                    "No cards found"
+                    "No job cards found"
                 )
-
 
                 continue
 
 
 
 
-            time.sleep(3)
+            time.sleep(2)
 
 
 
@@ -271,12 +257,11 @@ def scrape_linkedin(
 
             print(
 
-                "Cards:",
+                "Cards found:",
 
                 len(cards)
 
             )
-
 
 
 
@@ -348,7 +333,6 @@ def scrape_linkedin(
 
                     if key in seen:
 
-
                         continue
 
 
@@ -398,7 +382,7 @@ def scrape_linkedin(
 
         print(
 
-            "Total collected:",
+            "Collected jobs:",
 
             len(jobs)
 
@@ -407,20 +391,19 @@ def scrape_linkedin(
 
 
 
-
         # Load descriptions
 
-        for i, job in enumerate(jobs):
+        for index, job in enumerate(jobs):
 
 
             print(
 
-                f"Reading description {i+1}/{len(jobs)}"
+                f"Loading description {index+1}/{len(jobs)}"
 
             )
 
 
-            job["description"] = extract_job_description(
+            job["description"] = extract_job_details(
 
                 driver,
 
@@ -434,8 +417,11 @@ def scrape_linkedin(
 
 
         print(
+
             "LinkedIn scraper error:",
+
             e
+
         )
 
 
@@ -444,7 +430,6 @@ def scrape_linkedin(
 
 
         if own_driver:
-
 
             driver.quit()
 
