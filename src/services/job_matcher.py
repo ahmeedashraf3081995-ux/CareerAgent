@@ -49,10 +49,38 @@ SKILLS = [
 
     # Business
     "retail",
-    "e-commerce",
+    "e commerce",
     "category management",
     "fmcg",
     "consumer goods"
+
+]
+
+
+
+# Important skills shown first in missing skills
+
+SKILL_PRIORITY = [
+
+    "demand planning",
+    "supply planning",
+    "forecasting",
+    "statistical forecasting",
+    "inventory management",
+    "inventory optimization",
+    "safety stock",
+    "replenishment",
+    "s&op",
+    "sales and operations planning",
+    "otb",
+    "merchandise planning",
+    "assortment planning",
+    "sap",
+    "power bi",
+    "tableau",
+    "excel",
+    "sql",
+    "python"
 
 ]
 
@@ -91,9 +119,7 @@ def normalize(text):
 
 def extract_skills(text):
 
-    text = normalize(
-        text
-    )
+    text = normalize(text)
 
 
     found = []
@@ -105,14 +131,11 @@ def extract_skills(text):
         if skill in text:
 
 
-            found.append(
-                skill
-            )
+            found.append(skill)
 
 
-    return list(
-        set(found)
-    )
+
+    return list(set(found))
 
 
 
@@ -124,9 +147,7 @@ def extract_skills(text):
 
 def extract_years(text):
 
-    text = normalize(
-        text
-    )
+    text = normalize(text)
 
 
     matches = re.findall(
@@ -156,10 +177,6 @@ def extract_years(text):
 
     return 0
 
-
-
-
-
 # ==================================================
 # Title Matching
 # ==================================================
@@ -172,14 +189,9 @@ def calculate_title_score(
 
 ):
 
-    cv = normalize(
-        cv_text
-    )
+    cv = normalize(cv_text)
 
-
-    title = normalize(
-        job_title
-    )
+    title = normalize(job_title)
 
 
     score = 0
@@ -207,7 +219,6 @@ def calculate_title_score(
 
 
         if word in cv and word in title:
-
 
             score += 15
 
@@ -237,14 +248,9 @@ def seniority_score(
 
 ):
 
-    cv = normalize(
-        cv_text
-    )
+    cv = normalize(cv_text)
 
-
-    title = normalize(
-        job_title
-    )
+    title = normalize(job_title)
 
 
     score = 50
@@ -271,7 +277,6 @@ def seniority_score(
 
 
         if word in cv and word in title:
-
 
             score += 10
 
@@ -301,14 +306,10 @@ def industry_score(
 
 ):
 
-    cv = normalize(
-        cv_text
-    )
+    cv = normalize(cv_text)
 
+    job = normalize(job_text)
 
-    job = normalize(
-        job_text
-    )
 
 
     industries = [
@@ -334,7 +335,6 @@ def industry_score(
 
 
         if item in cv and item in job:
-
 
             matched += 1
 
@@ -366,15 +366,29 @@ def find_missing_skills(
     missing = []
 
 
+
+    # First show important missing skills
+
+    for skill in SKILL_PRIORITY:
+
+
+        if skill in job_skills and skill not in cv_skills:
+
+
+            missing.append(skill)
+
+
+
+    # Add other missing skills
+
     for skill in job_skills:
 
 
-        if skill not in cv_skills:
+        if skill not in cv_skills and skill not in missing:
 
 
-            missing.append(
-                skill
-            )
+            missing.append(skill)
+
 
 
     return missing[:8]
@@ -384,7 +398,7 @@ def find_missing_skills(
 
 
 # ==================================================
-# Explanation
+# Explanation Generator
 # ==================================================
 
 def create_reason(
@@ -406,7 +420,9 @@ def create_reason(
             +
 
             ", ".join(
+
                 matched[:6]
+
             )
 
         )
@@ -423,7 +439,9 @@ def create_reason(
             +
 
             ", ".join(
+
                 matched[:6]
+
             )
 
         )
@@ -438,12 +456,7 @@ def create_reason(
             "Partial match. Consider improving your CV keywords and experience alignment."
 
         )
-
-
-
-
-
-# ==================================================
+    # ==================================================
 # Main Matching Function
 # ==================================================
 
@@ -534,10 +547,12 @@ def match_jobs(
 
 
 
-        # Scores
-
+        # ==============================
+        # Skill Score
+        # ==============================
 
         skill_score = 0
+
 
 
         if job_skills:
@@ -563,6 +578,10 @@ def match_jobs(
 
 
 
+        # ==============================
+        # Other Scores
+        # ==============================
+
         title_score = calculate_title_score(
 
             cv_text,
@@ -582,6 +601,7 @@ def match_jobs(
         )
 
 
+
         industry = industry_score(
 
             cv_text,
@@ -592,8 +612,9 @@ def match_jobs(
 
 
 
-        # Experience
-
+        # ==============================
+        # Experience Score
+        # ==============================
 
         job_years = extract_years(
 
@@ -631,8 +652,9 @@ def match_jobs(
 
 
 
-        # Final weighted score
-
+        # ==============================
+        # Final Score
+        # ==============================
 
         final_score = round(
 
@@ -689,10 +711,17 @@ def match_jobs(
 
 
 
-        # Save results
 
+        # ==============================
+        # Save Result
+        # ==============================
 
         job["match_score"] = final_score
+
+
+        # Keep description visible for UI
+
+        job["job_description"] = description
 
 
         job["matched_skills"] = matched_skills
@@ -720,56 +749,46 @@ def match_jobs(
         if final_score >= 85:
 
 
-            job["match_level"] = (
+            job["match_level"] = "🔥 Excellent Match"
 
-                "🔥 Excellent Match"
-
-            )
 
 
         elif final_score >= 70:
 
 
-            job["match_level"] = (
+            job["match_level"] = "✅ Good Match"
 
-                "✅ Good Match"
-
-            )
 
 
         elif final_score >= 50:
 
 
-            job["match_level"] = (
+            job["match_level"] = "⚠️ Partial Match"
 
-                "⚠️ Partial Match"
-
-            )
 
 
         else:
 
 
-            job["match_level"] = (
-
-                "❌ Weak Match"
-
-            )
+            job["match_level"] = "❌ Weak Match"
 
 
 
         results.append(
+
             job
+
         )
 
 
 
-    # Highest match first
 
+
+    # Sort best jobs first
 
     results.sort(
 
-        key=lambda x:x.get(
+        key=lambda x: x.get(
 
             "match_score",
 
