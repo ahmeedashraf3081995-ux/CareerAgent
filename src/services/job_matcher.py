@@ -1,7 +1,6 @@
 import re
 
 
-
 # ==================================================
 # Skill Database
 # ==================================================
@@ -49,42 +48,12 @@ SKILLS = [
 
     # Business
     "retail",
-    "e commerce",
+    "e-commerce",
     "category management",
     "fmcg",
     "consumer goods"
 
 ]
-
-
-
-# Important skills shown first in missing skills
-
-SKILL_PRIORITY = [
-
-    "demand planning",
-    "supply planning",
-    "forecasting",
-    "statistical forecasting",
-    "inventory management",
-    "inventory optimization",
-    "safety stock",
-    "replenishment",
-    "s&op",
-    "sales and operations planning",
-    "otb",
-    "merchandise planning",
-    "assortment planning",
-    "sap",
-    "power bi",
-    "tableau",
-    "excel",
-    "sql",
-    "python"
-
-]
-
-
 
 
 
@@ -95,21 +64,14 @@ SKILL_PRIORITY = [
 def normalize(text):
 
     if not text:
-
         return ""
 
 
     return re.sub(
-
         r"[^a-zA-Z0-9&\s]",
-
         " ",
-
         text.lower()
-
     )
-
-
 
 
 
@@ -121,23 +83,17 @@ def extract_skills(text):
 
     text = normalize(text)
 
-
     found = []
 
 
     for skill in SKILLS:
 
-
         if skill in text:
-
 
             found.append(skill)
 
 
-
     return list(set(found))
-
-
 
 
 
@@ -151,43 +107,28 @@ def extract_years(text):
 
 
     matches = re.findall(
-
         r"(\d+)\+?\s*(?:years|year)",
-
         text
-
     )
 
 
     if matches:
 
-
         return max(
-
-            [
-
-                int(x)
-
-                for x in matches
-
-            ]
-
+            int(x)
+            for x in matches
         )
 
 
     return 0
 
+
+
 # ==================================================
 # Title Matching
 # ==================================================
 
-def calculate_title_score(
-
-    cv_text,
-
-    job_title
-
-):
+def calculate_title_score(cv_text, job_title):
 
     cv = normalize(cv_text)
 
@@ -195,7 +136,6 @@ def calculate_title_score(
 
 
     score = 0
-
 
 
     important_words = [
@@ -214,25 +154,14 @@ def calculate_title_score(
     ]
 
 
-
     for word in important_words:
-
 
         if word in cv and word in title:
 
             score += 15
 
 
-
-    return min(
-
-        score,
-
-        100
-
-    )
-
-
+    return min(score, 100)
 
 
 
@@ -240,13 +169,7 @@ def calculate_title_score(
 # Seniority Matching
 # ==================================================
 
-def seniority_score(
-
-    cv_text,
-
-    job_title
-
-):
+def seniority_score(cv_text, job_title):
 
     cv = normalize(cv_text)
 
@@ -256,41 +179,25 @@ def seniority_score(
     score = 50
 
 
-
     senior_words = [
 
         "senior",
-
         "lead",
-
         "manager",
-
         "head",
-
         "director"
 
     ]
 
 
-
     for word in senior_words:
-
 
         if word in cv and word in title:
 
             score += 10
 
 
-
-    return min(
-
-        score,
-
-        100
-
-    )
-
-
+    return min(score, 100)
 
 
 
@@ -298,56 +205,32 @@ def seniority_score(
 # Industry Match
 # ==================================================
 
-def industry_score(
-
-    cv_text,
-
-    job_text
-
-):
+def industry_score(cv_text, job_text):
 
     cv = normalize(cv_text)
 
     job = normalize(job_text)
 
 
-
     industries = [
 
         "retail",
-
         "fmcg",
-
         "consumer goods",
-
         "e commerce",
-
         "electronics"
 
     ]
 
 
-    matched = 0
-
-
-
     for item in industries:
-
 
         if item in cv and item in job:
 
-            matched += 1
-
-
-
-    if matched:
-
-        return 100
+            return 100
 
 
     return 50
-
-
 
 
 
@@ -355,63 +238,42 @@ def industry_score(
 # Missing Skills
 # ==================================================
 
-def find_missing_skills(
+def find_missing_skills(job_skills, cv_skills):
 
-    job_skills,
+    cv_skills_clean = set(
 
-    cv_skills
+        skill.lower().strip()
 
-):
+        for skill in cv_skills
+
+    )
+
 
     missing = []
 
 
-
-    # First show important missing skills
-
-    for skill in SKILL_PRIORITY:
-
-
-        if skill in job_skills and skill not in cv_skills:
-
-
-            missing.append(skill)
-
-
-
-    # Add other missing skills
-
     for skill in job_skills:
 
+        skill_clean = skill.lower().strip()
 
-        if skill not in cv_skills and skill not in missing:
 
+        if skill_clean not in cv_skills_clean:
 
             missing.append(skill)
 
 
-
-    return missing[:8]
-
-
+    return missing[:10]
 
 
 
 # ==================================================
-# Explanation Generator
+# Explanation
 # ==================================================
 
-def create_reason(
-
-    matched,
-
-    score
-
-):
+def create_reason(matched, score):
 
 
     if score >= 85:
-
 
         return (
 
@@ -419,18 +281,12 @@ def create_reason(
 
             +
 
-            ", ".join(
-
-                matched[:6]
-
-            )
+            ", ".join(matched[:6])
 
         )
 
 
-
     elif score >= 70:
-
 
         return (
 
@@ -438,49 +294,31 @@ def create_reason(
 
             +
 
-            ", ".join(
-
-                matched[:6]
-
-            )
+            ", ".join(matched[:6])
 
         )
 
 
-
     else:
-
 
         return (
 
             "Partial match. Consider improving your CV keywords and experience alignment."
 
         )
-    # ==================================================
+
+
+
+# ==================================================
 # Main Matching Function
 # ==================================================
 
-def match_jobs(
-
-    cv_text,
-
-    jobs
-
-):
+def match_jobs(cv_text, jobs):
 
 
-    cv_skills = extract_skills(
+    cv_skills = extract_skills(cv_text)
 
-        cv_text
-
-    )
-
-
-    cv_years = extract_years(
-
-        cv_text
-
-    )
+    cv_years = extract_years(cv_text)
 
 
     results = []
@@ -490,25 +328,16 @@ def match_jobs(
     for job in jobs:
 
 
-
         title = job.get(
-
             "job_title",
-
             ""
-
         )
-
 
 
         description = job.get(
-
             "description",
-
             ""
-
         )
-
 
 
         job_text = (
@@ -527,11 +356,7 @@ def match_jobs(
 
 
 
-        job_skills = extract_skills(
-
-            job_text
-
-        )
+        job_skills = extract_skills(job_text)
 
 
 
@@ -547,16 +372,12 @@ def match_jobs(
 
 
 
-        # ==============================
         # Skill Score
-        # ==============================
 
         skill_score = 0
 
 
-
         if job_skills:
-
 
             skill_score = round(
 
@@ -578,10 +399,6 @@ def match_jobs(
 
 
 
-        # ==============================
-        # Other Scores
-        # ==============================
-
         title_score = calculate_title_score(
 
             cv_text,
@@ -591,7 +408,6 @@ def match_jobs(
         )
 
 
-
         senior_score = seniority_score(
 
             cv_text,
@@ -599,7 +415,6 @@ def match_jobs(
             title
 
         )
-
 
 
         industry = industry_score(
@@ -612,15 +427,7 @@ def match_jobs(
 
 
 
-        # ==============================
-        # Experience Score
-        # ==============================
-
-        job_years = extract_years(
-
-            job_text
-
-        )
+        job_years = extract_years(job_text)
 
 
         experience_score = 50
@@ -632,72 +439,42 @@ def match_jobs(
 
             if cv_years >= job_years:
 
-
                 experience_score = 100
 
-
             else:
-
 
                 experience_score = 70
 
 
-
         elif cv_years:
-
 
             experience_score = 80
 
 
 
-
-
-        # ==============================
         # Final Score
-        # ==============================
 
         final_score = round(
 
-            (
-
-                skill_score * 0.35
-
-            )
+            (skill_score * 0.35)
 
             +
 
-            (
-
-                title_score * 0.25
-
-            )
+            (title_score * 0.25)
 
             +
 
-            (
-
-                senior_score * 0.15
-
-            )
+            (senior_score * 0.15)
 
             +
 
-            (
-
-                industry * 0.10
-
-            )
+            (industry * 0.10)
 
             +
 
-            (
-
-                experience_score * 0.15
-
-            )
+            (experience_score * 0.15)
 
         )
-
 
 
         final_score = min(
@@ -710,18 +487,9 @@ def match_jobs(
 
 
 
-
-
-        # ==============================
-        # Save Result
-        # ==============================
+        # Save Results
 
         job["match_score"] = final_score
-
-
-        # Keep description visible for UI
-
-        job["job_description"] = description
 
 
         job["matched_skills"] = matched_skills
@@ -748,43 +516,30 @@ def match_jobs(
 
         if final_score >= 85:
 
-
             job["match_level"] = "🔥 Excellent Match"
-
 
 
         elif final_score >= 70:
 
-
             job["match_level"] = "✅ Good Match"
-
 
 
         elif final_score >= 50:
 
-
             job["match_level"] = "⚠️ Partial Match"
 
 
-
         else:
-
 
             job["match_level"] = "❌ Weak Match"
 
 
 
-        results.append(
-
-            job
-
-        )
+        results.append(job)
 
 
 
-
-
-    # Sort best jobs first
+    # Highest match first
 
     results.sort(
 
@@ -799,7 +554,6 @@ def match_jobs(
         reverse=True
 
     )
-
 
 
     return results
