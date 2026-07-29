@@ -1,124 +1,6 @@
-from selenium import webdriver
-
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-
+from playwright.sync_api import sync_playwright
 import urllib.parse
 import time
-
-
-
-
-def create_driver():
-
-    options = Options()
-
-
-    # Streamlit Cloud compatible Chrome settings
-
-    options.add_argument(
-        "--headless"
-    )
-
-    options.add_argument(
-        "--no-sandbox"
-    )
-
-    options.add_argument(
-        "--disable-dev-shm-usage"
-    )
-
-    options.add_argument(
-        "--disable-gpu"
-    )
-
-    options.add_argument(
-        "--disable-software-rasterizer"
-    )
-
-    options.add_argument(
-        "--disable-extensions"
-    )
-
-    options.add_argument(
-        "--disable-blink-features=AutomationControlled"
-    )
-
-    options.add_argument(
-        "--window-size=1920,1080"
-    )
-
-
-    options.add_argument(
-        "--remote-debugging-port=9222"
-    )
-
-
-    driver = webdriver.Chrome(
-        options=options
-    )
-
-
-    driver.set_page_load_timeout(
-        40
-    )
-
-
-    return driver
-
-
-
-
-
-
-def extract_job_details(driver, url):
-
-    description = ""
-
-
-    try:
-
-        driver.get(
-            url
-        )
-
-
-        time.sleep(3)
-
-
-        elements = driver.find_elements(
-
-            By.CLASS_NAME,
-
-            "description__text"
-
-        )
-
-
-        if elements:
-
-            description = elements[0].text.strip()
-
-
-
-    except Exception as e:
-
-
-        print(
-            "Description error:",
-            e
-        )
-
-
-    return description
-
-
-
-
 
 
 
@@ -128,9 +10,7 @@ def scrape_linkedin(
 
     location="Dubai",
 
-    pages=5,
-
-    driver=None
+    pages=5
 
 ):
 
@@ -142,304 +22,257 @@ def scrape_linkedin(
 
     jobs = []
 
-    own_driver = False
-
-
-
-    if driver is None:
-
-        driver = create_driver()
-
-        own_driver = True
-
-
-
     seen = set()
 
 
 
-    try:
+    with sync_playwright() as p:
+
+
+        browser = p.chromium.launch(
+
+            headless=True,
+
+            args=[
+
+                "--no-sandbox",
+
+                "--disable-dev-shm-usage"
+
+            ]
+
+        )
+
+
+        page = browser.new_page(
+
+            viewport={
+
+                "width":1920,
+
+                "height":1080
+
+            }
+
+        )
 
 
 
-        for page in range(pages):
+        try:
 
 
-            start = page * 25
+            for page_number in range(pages):
 
 
-
-            url = (
-
-                "https://www.linkedin.com/jobs/search/?keywords="
-
-                +
-
-                urllib.parse.quote(keyword)
-
-                +
-
-                "&location="
-
-                +
-
-                urllib.parse.quote(location)
-
-                +
-
-                "&start="
-
-                +
-
-                str(start)
-
-            )
+                start = page_number * 25
 
 
 
-            print(
-                "Opening page:",
-                page + 1
-            )
+                url = (
 
+                    "https://www.linkedin.com/jobs/search/?keywords="
 
+                    +
 
-            driver.get(
-                url
-            )
+                    urllib.parse.quote(keyword)
 
+                    +
 
+                    "&location="
 
-            try:
+                    +
 
+                    urllib.parse.quote(location)
 
-                WebDriverWait(
+                    +
 
-                    driver,
+                    "&start="
 
-                    20
+                    +
 
-                ).until(
-
-
-                    EC.presence_of_all_elements_located(
-
-                        (
-
-                            By.CLASS_NAME,
-
-                            "base-search-card"
-
-                        )
-
-                    )
+                    str(start)
 
                 )
 
-
-            except Exception:
 
 
                 print(
-                    "No job cards found"
+                    "Opening:",
+                    url
                 )
 
-                continue
+
+
+                page.goto(
+
+                    url,
+
+                    timeout=60000
+
+                )
 
 
 
-
-            time.sleep(2)
-
+                time.sleep(3)
 
 
-            cards = driver.find_elements(
 
-                By.CLASS_NAME,
+                cards = page.locator(
 
-                "base-search-card"
+                    ".base-search-card"
 
-            )
+                )
 
+
+
+                count = cards.count()
+
+
+
+                print(
+
+                    "Cards found:",
+
+                    count
+
+                )
+
+
+
+                for i in range(count):
+
+
+                    try:
+
+
+                        card = cards.nth(i)
+
+
+
+                        title = card.locator(
+
+                            ".base-search-card__title"
+
+                        ).inner_text()
+
+
+
+                        company = card.locator(
+
+                            ".base-search-card__subtitle"
+
+                        ).inner_text()
+
+
+
+                        location_text = card.locator(
+
+                            ".job-search-card__location"
+
+                        ).inner_text()
+
+
+
+                        link = card.locator(
+
+                            "a"
+
+                        ).first.get_attribute(
+
+                            "href"
+
+                        )
+
+
+
+                        key = (
+
+                            title.lower()
+
+                            +
+
+                            company.lower()
+
+                            +
+
+                            location_text.lower()
+
+                        )
+
+
+
+                        if key in seen:
+
+                            continue
+
+
+
+                        seen.add(key)
+
+
+
+                        jobs.append(
+
+                            {
+
+                                "job_title": title.strip(),
+
+                                "company": company.strip(),
+
+                                "location": location_text.strip(),
+
+                                "url": link,
+
+                                "source": "LinkedIn",
+
+                                "description": ""
+
+                            }
+
+                        )
+
+
+
+                    except Exception as e:
+
+
+                        print(
+
+                            "Job skipped:",
+
+                            e
+
+                        )
+
+
+
+        except Exception as e:
 
 
             print(
 
-                "Cards found:",
+                "LinkedIn error:",
 
-                len(cards)
+                e
 
             )
 
 
 
-            for card in cards:
+        finally:
 
 
-                try:
+            browser.close()
 
 
-                    title = card.find_element(
 
-                        By.CLASS_NAME,
+    print(
 
-                        "base-search-card__title"
+        "Total jobs:",
 
-                    ).text.strip()
+        len(jobs)
 
-
-
-                    company = card.find_element(
-
-                        By.CLASS_NAME,
-
-                        "base-search-card__subtitle"
-
-                    ).text.strip()
-
-
-
-                    location_text = card.find_element(
-
-                        By.CLASS_NAME,
-
-                        "job-search-card__location"
-
-                    ).text.strip()
-
-
-
-                    link = card.find_element(
-
-                        By.TAG_NAME,
-
-                        "a"
-
-                    ).get_attribute(
-
-                        "href"
-
-                    )
-
-
-
-                    key = (
-
-                        title.lower()
-
-                        +
-
-                        company.lower()
-
-                        +
-
-                        location_text.lower()
-
-                    )
-
-
-
-                    if key in seen:
-
-                        continue
-
-
-
-                    seen.add(
-                        key
-                    )
-
-
-
-                    jobs.append(
-
-                        {
-
-                            "job_title": title,
-
-                            "company": company,
-
-                            "location": location_text,
-
-                            "url": link,
-
-                            "source": "LinkedIn",
-
-                            "description": ""
-
-                        }
-
-                    )
-
-
-
-                except Exception as e:
-
-
-                    print(
-
-                        "Card skipped:",
-
-                        e
-
-                    )
-
-
-
-
-
-        print(
-
-            "Collected jobs:",
-
-            len(jobs)
-
-        )
-
-
-
-
-        # Load descriptions
-
-        for index, job in enumerate(jobs):
-
-
-            print(
-
-                f"Loading description {index+1}/{len(jobs)}"
-
-            )
-
-
-            job["description"] = extract_job_details(
-
-                driver,
-
-                job["url"]
-
-            )
-
-
-
-    except Exception as e:
-
-
-        print(
-
-            "LinkedIn scraper error:",
-
-            e
-
-        )
-
-
-
-    finally:
-
-
-        if own_driver:
-
-            driver.quit()
+    )
 
 
 
