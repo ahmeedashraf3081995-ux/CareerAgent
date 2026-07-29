@@ -1,6 +1,5 @@
 streamlit
 selenium
-webdriver-manager
 pypdf
 PyPDF2
 pandas

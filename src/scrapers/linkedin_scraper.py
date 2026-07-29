@@ -1,12 +1,11 @@
 from selenium import webdriver
+
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-
-from webdriver_manager.chrome import ChromeDriverManager
 
 import urllib.parse
 import time
@@ -19,10 +18,10 @@ def create_driver():
     options = Options()
 
 
-    # Streamlit Cloud compatible
+    # Streamlit Cloud compatible Chrome settings
 
     options.add_argument(
-        "--headless=new"
+        "--headless"
     )
 
     options.add_argument(
@@ -38,6 +37,14 @@ def create_driver():
     )
 
     options.add_argument(
+        "--disable-software-rasterizer"
+    )
+
+    options.add_argument(
+        "--disable-extensions"
+    )
+
+    options.add_argument(
         "--disable-blink-features=AutomationControlled"
     )
 
@@ -46,13 +53,12 @@ def create_driver():
     )
 
 
-    service = Service(
-        ChromeDriverManager().install()
+    options.add_argument(
+        "--remote-debugging-port=9222"
     )
 
 
     driver = webdriver.Chrome(
-        service=service,
         options=options
     )
 
@@ -63,6 +69,7 @@ def create_driver():
 
 
     return driver
+
 
 
 
@@ -108,6 +115,7 @@ def extract_job_details(driver, url):
 
 
     return description
+
 
 
 
@@ -209,7 +217,7 @@ def scrape_linkedin(
 
                     driver,
 
-                    15
+                    20
 
                 ).until(
 
