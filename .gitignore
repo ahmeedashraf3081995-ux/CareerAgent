@@ -8,3 +8,5 @@ saved_jobs.json
 .vscode/
 
 .idea/
+
+.venv/
