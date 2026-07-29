@@ -10,7 +10,7 @@ def scrape_linkedin(
 
     location="Dubai",
 
-    pages=5
+    pages=1
 
 ):
 
@@ -41,13 +41,12 @@ def scrape_linkedin(
 
                 "--disable-dev-shm-usage",
 
-                "--disable-gpu",
-
-                "--disable-software-rasterizer"
+                "--disable-gpu"
 
             ]
 
         )
+
 
 
         page = browser.new_page(
@@ -61,7 +60,6 @@ def scrape_linkedin(
             }
 
         )
-
 
 
         try:
@@ -104,27 +102,44 @@ def scrape_linkedin(
 
                 print(
 
-                    "Opening:",
-
-                    url
+                    f"Opening LinkedIn page {page_number + 1}"
 
                 )
 
 
 
-                page.goto(
-
-                    url,
-
-                    timeout=60000,
-
-                    wait_until="domcontentloaded"
-
-                )
+                try:
 
 
+                    page.goto(
 
-                time.sleep(3)
+                        url,
+
+                        timeout=20000,
+
+                        wait_until="domcontentloaded"
+
+                    )
+
+
+                except Exception as e:
+
+
+                    print(
+
+                        "Page loading timeout:",
+
+                        e
+
+                    )
+
+                    continue
+
+
+
+                # Allow cards to appear
+
+                time.sleep(1)
 
 
 
@@ -133,6 +148,7 @@ def scrape_linkedin(
                     ".base-search-card"
 
                 )
+
 
 
                 count = cards.count()
@@ -248,7 +264,7 @@ def scrape_linkedin(
 
                         print(
 
-                            "Job card skipped:",
+                            "Card skipped:",
 
                             e
 
