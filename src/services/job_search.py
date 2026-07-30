@@ -350,15 +350,12 @@ def search_jobs(parameters):
         )
 
 
-        results = match_jobs(
+ results = match_jobs(
 
-            cv_text,
+    cv_text,
+    results
 
-            results,
-
-            batch_size=10
-
-        )
+)
 
 
         print(
