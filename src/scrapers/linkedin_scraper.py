@@ -98,12 +98,25 @@ def launch_browser(playwright):
 def scrape_linkedin(
     keyword="Demand Planner",
     location="Dubai",
-    pages=1
+    pages=1,
+    posted_days=None
 ):
 
     print(
         f"Searching LinkedIn: {keyword} - {location}"
     )
+
+    if posted_days:
+
+        print(
+            f"LinkedIn date filter: last {posted_days} days"
+        )
+
+    else:
+
+        print(
+            "LinkedIn date filter: Any time"
+        )
 
     jobs = []
 
@@ -128,6 +141,10 @@ def scrape_linkedin(
 
                 start = page_number * 25
 
+                # ====================================================
+                # LinkedIn URL
+                # ====================================================
+
                 url = (
                     "https://www.linkedin.com/jobs/search/?keywords="
                     +
@@ -142,8 +159,41 @@ def scrape_linkedin(
                     str(start)
                 )
 
+                # ====================================================
+                # Date Posted Filter
+                #
+                # LinkedIn f_TPR uses seconds.
+                #
+                # Example:
+                # 1 day  = r86400
+                # 7 days = r604800
+                # ====================================================
+
+                if posted_days:
+
+                    seconds = (
+                        int(posted_days)
+                        *
+                        24
+                        *
+                        60
+                        *
+                        60
+                    )
+
+                    url += (
+                        "&f_TPR=r"
+                        +
+                        str(seconds)
+                    )
+
                 print(
                     f"Opening LinkedIn page {page_number + 1}"
+                )
+
+                print(
+                    "URL:",
+                    url
                 )
 
                 try:
@@ -186,11 +236,19 @@ def scrape_linkedin(
 
                         card = cards.nth(i)
 
+                        # ====================================================
+                        # Title
+                        # ====================================================
+
                         title = card.locator(
                             ".base-search-card__title"
                         ).inner_text(
                             timeout=5000
                         ).strip()
+
+                        # ====================================================
+                        # Company
+                        # ====================================================
 
                         company = card.locator(
                             ".base-search-card__subtitle"
@@ -198,17 +256,29 @@ def scrape_linkedin(
                             timeout=5000
                         ).strip()
 
+                        # ====================================================
+                        # Location
+                        # ====================================================
+
                         location_text = card.locator(
                             ".job-search-card__location"
                         ).inner_text(
                             timeout=5000
                         ).strip()
 
+                        # ====================================================
+                        # URL
+                        # ====================================================
+
                         link = card.locator(
                             "a"
                         ).first.get_attribute(
                             "href"
                         )
+
+                        # ====================================================
+                        # Posted Date
+                        # ====================================================
 
                         posted_date = ""
 
@@ -248,6 +318,10 @@ def scrape_linkedin(
 
                                 continue
 
+                        # ====================================================
+                        # Duplicate Check
+                        # ====================================================
+
                         key = (
                             title.lower()
                             +
@@ -263,6 +337,10 @@ def scrape_linkedin(
                         seen.add(
                             key
                         )
+
+                        # ====================================================
+                        # Save Job
+                        # ====================================================
 
                         jobs.append({
 

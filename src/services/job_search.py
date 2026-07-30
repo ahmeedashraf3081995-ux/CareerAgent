@@ -149,6 +149,50 @@ def search_jobs(parameters):
     )
 
     # ========================================================
+    # Job Posting Date
+    #
+    # 1  = last 1 day
+    # 3  = last 3 days
+    # 7  = last 7 days
+    # 14 = last 14 days
+    # 30 = last 30 days
+    # 0  = any time
+    #
+    # Default = 7 days
+    # ========================================================
+
+    posted_days = parameters.get(
+        "posted_days",
+        7
+    )
+
+    try:
+
+        posted_days = int(
+            posted_days
+        )
+
+    except Exception:
+
+        posted_days = 7
+
+    # Prevent invalid negative values
+
+    if posted_days < 0:
+
+        posted_days = 0
+
+    print(
+        "Job posting date filter:",
+        (
+            f"last {posted_days} days"
+            if posted_days > 0
+            else
+            "Any time"
+        )
+    )
+
+    # ========================================================
     # Default Search Titles
     # ========================================================
 
@@ -208,7 +252,9 @@ def search_jobs(parameters):
 
                     location=city,
 
-                    pages=5
+                    pages=5,
+
+                    posted_days=posted_days
 
                 )
 

@@ -3,32 +3,6 @@ import sys
 import os
 import hashlib
 
-# ==================================================
-# TEMPORARY AI SECRETS DEBUG
-# ==================================================
-
-st.write(
-    "OpenRouter:",
-    bool(st.secrets.get("OPENROUTER_API_KEY"))
-)
-
-st.write(
-    "Groq:",
-    bool(st.secrets.get("GROQ_API_KEY"))
-)
-
-st.write(
-    "Gemini:",
-    bool(st.secrets.get("GEMINI_API_KEY"))
-)
-
-st.write(
-    "Groq model:",
-    st.secrets.get(
-        "GROQ_MODEL",
-        "NOT SET"
-    )
-)
 
 # ==================================================
 # Project Root
@@ -53,6 +27,7 @@ from src.services.cv_analyzer import analyze_cv
 from src.services.job_search import search_jobs
 from src.services.job_matcher import match_jobs
 from src.services.cv_job_analyzer import analyze_jobs_against_cv
+from src.services.job_ranker import rank_jobs_with_ai
 
 
 # ==================================================
@@ -250,6 +225,59 @@ if uploaded_file:
     )
 
 
+    # ==================================================
+    # Job Posting Date
+    # ==================================================
+
+    posted_days = st.selectbox(
+
+        "📅 Job Posting Date",
+
+        options=[
+            1,
+            3,
+            7,
+            14,
+            30,
+            0
+        ],
+
+        format_func=lambda x:
+
+            (
+                "Last 1 day"
+                if x == 1
+
+                else
+
+                "Last 3 days"
+                if x == 3
+
+                else
+
+                "Last 7 days"
+                if x == 7
+
+                else
+
+                "Last 14 days"
+                if x == 14
+
+                else
+
+                "Last 30 days"
+                if x == 30
+
+                else
+
+                "Any time"
+            ),
+
+        index=2
+
+    )
+
+
     st.divider()
 
 
@@ -270,19 +298,32 @@ if uploaded_file:
 
         else:
 
+            # ==========================================
+            # Search Parameters
+            # ==========================================
+
             search_parameters = {
 
-                "job_titles": job_titles,
+                "job_titles":
+                    job_titles,
 
-                "countries": countries,
+                "countries":
+                    countries,
 
-                "cities": cities,
+                "cities":
+                    cities,
 
-                "companies": companies,
+                "companies":
+                    companies,
 
-                "cv_text": st.session_state.cv_text
+                "posted_days":
+                    posted_days,
+
+                "cv_text":
+                    st.session_state.cv_text
 
             }
+
 
             st.session_state.search_parameters = (
                 search_parameters
@@ -320,6 +361,23 @@ if uploaded_file:
                     st.session_state.cv_text,
 
                     jobs
+
+                )
+
+
+            # ==========================================
+            # AI JOB ANALYSIS + RANKING
+            # ==========================================
+
+            with st.spinner(
+                "🤖 AI Is Analyzing And Ranking Jobs..."
+            ):
+
+                matched_jobs = rank_jobs_with_ai(
+
+                    st.session_state.cv_text,
+
+                    matched_jobs
 
                 )
 
