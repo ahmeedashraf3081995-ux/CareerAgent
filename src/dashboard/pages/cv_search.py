@@ -44,10 +44,9 @@ st.title(
     "📄 CV-Based Job Search"
 )
 
-
 st.write(
-    "Upload your CV and CareerAgent will analyze it "
-    "and suggest the best job search criteria."
+    "Upload Your CV And CareerAgent Will Analyze It "
+    "And Suggest The Best Job Search Criteria."
 )
 
 
@@ -68,7 +67,6 @@ if uploaded_file:
     # ==================================================
 
     file_bytes = uploaded_file.getvalue()
-
 
     current_file_id = hashlib.md5(
         file_bytes
@@ -102,14 +100,12 @@ if uploaded_file:
 
         ]
 
-
         for key in clear_keys:
 
             st.session_state.pop(
                 key,
                 None
             )
-
 
         st.session_state.uploaded_cv_id = (
             current_file_id
@@ -130,24 +126,13 @@ if uploaded_file:
                 uploaded_file
             )
 
-
             analysis = analyze_cv(
                 text
             )
 
-
-            # ------------------------------------------
-            # Save CV Text
-            # ------------------------------------------
-
             st.session_state.cv_text = (
                 text
             )
-
-
-            # ------------------------------------------
-            # Suggested Job Titles
-            # ------------------------------------------
 
             st.session_state.cv_job_titles = (
                 analysis.get(
@@ -156,22 +141,12 @@ if uploaded_file:
                 )
             )
 
-
-            # ------------------------------------------
-            # Suggested Countries
-            # ------------------------------------------
-
             st.session_state.cv_countries = (
                 analysis.get(
                     "countries",
                     []
                 )
             )
-
-
-            # ------------------------------------------
-            # Suggested Cities
-            # ------------------------------------------
 
             st.session_state.cv_cities = (
                 analysis.get(
@@ -180,18 +155,12 @@ if uploaded_file:
                 )
             )
 
-
-            # ------------------------------------------
-            # Companies
-            # ------------------------------------------
-
             st.session_state.cv_companies = []
 
 
         st.success(
             "CV Successfully Analyzed"
         )
-
 
     else:
 
@@ -224,7 +193,6 @@ if uploaded_file:
         "🎯 Search Preferences"
     )
 
-
     st.info(
         "CareerAgent Generated These Suggestions From Your CV. "
         "Edit, Remove, Or Add Anything Before Searching."
@@ -240,18 +208,15 @@ if uploaded_file:
         "cv_job_titles"
     )
 
-
     countries = tag_input(
         "Countries",
         "cv_countries"
     )
 
-
     cities = tag_input(
         "Cities",
         "cv_cities"
     )
-
 
     companies = tag_input(
         "Companies",
@@ -271,22 +236,13 @@ if uploaded_file:
         use_container_width=True
     ):
 
-        # ------------------------------------------
-        # Validate Job Titles
-        # ------------------------------------------
-
         if not job_titles:
 
             st.warning(
                 "Please Add At Least One Job Title."
             )
 
-
         else:
-
-            # ==========================================
-            # Search Parameters
-            # ==========================================
 
             search_parameters = {
 
@@ -301,7 +257,6 @@ if uploaded_file:
                 "cv_text": st.session_state.cv_text
 
             }
-
 
             st.session_state.search_parameters = (
                 search_parameters

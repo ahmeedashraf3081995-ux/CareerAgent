@@ -1,6 +1,10 @@
 import streamlit as st
 
 
+# ==================================================
+# Page Configuration
+# ==================================================
+
 st.set_page_config(
     page_title="CareerAgent",
     page_icon="💼",
@@ -8,16 +12,22 @@ st.set_page_config(
 )
 
 
-st.title("💼 CareerAgent")
+# ==================================================
+# Header
+# ==================================================
+
+st.title(
+    "💼 CareerAgent"
+)
 
 st.subheader(
-    "AI-powered job search assistant"
+    "AI-Powered Job Search Assistant"
 )
 
 st.write(
     """
-Upload your CV and let AI find matching jobs,
-or search manually by job title, location and company.
+Upload Your CV And Let AI Find Matching Jobs,
+Or Search Manually By Job Title, Location, And Company.
 """
 )
 
@@ -25,19 +35,26 @@ or search manually by job title, location and company.
 st.divider()
 
 
+# ==================================================
+# Search Options
+# ==================================================
+
 col1, col2 = st.columns(2)
 
+
+# ==================================================
+# CV Search
+# ==================================================
 
 with col1:
 
     st.markdown(
-        "## 📄 Search using CV"
+        "## 📄 Search Using CV"
     )
 
     st.write(
-        "AI will analyze your CV and suggest suitable jobs."
+        "AI Will Analyze Your CV And Suggest Suitable Jobs."
     )
-
 
     if st.button(
         "Upload CV",
@@ -49,6 +66,9 @@ with col1:
         )
 
 
+# ==================================================
+# Manual Search
+# ==================================================
 
 with col2:
 
@@ -57,9 +77,8 @@ with col2:
     )
 
     st.write(
-        "Search without uploading any CV."
+        "Search Without Uploading A CV."
     )
-
 
     if st.button(
         "Manual Search",

@@ -9,22 +9,29 @@ sys.path.append(
         )
     )
 )
+
 import streamlit as st
 
 from components.chips import tag_input
 from src.services.job_search import search_jobs
 
 
-st.title("🔎 Manual Job Search")
+# ==================================================
+# Page Header
+# ==================================================
 
+st.title(
+    "🔎 Manual Job Search"
+)
 
 st.write(
-    "Define what jobs you want CareerAgent to search for."
+    "Define What Jobs You Want CareerAgent To Search For."
 )
 
 
-
+# ==================================================
 # Inputs
+# ==================================================
 
 job_titles = tag_input(
     "Job Titles",
@@ -56,18 +63,17 @@ keywords = tag_input(
 )
 
 
-
 st.divider()
 
 
-
-# Search button
+# ==================================================
+# Search Button
+# ==================================================
 
 if st.button(
     "🚀 Search Jobs",
     use_container_width=True
 ):
-
 
     parameters = {
 
@@ -84,35 +90,35 @@ if st.button(
     }
 
 
-    st.session_state["search_parameters"] = parameters
-
+    st.session_state[
+        "search_parameters"
+    ] = parameters
 
 
     if not job_titles:
 
         st.warning(
-            "Please add at least one job title."
+            "Please Add At Least One Job Title."
         )
 
     else:
 
-
         with st.spinner(
-            "Searching LinkedIn jobs..."
+            "Searching LinkedIn Jobs..."
         ):
-
 
             results = search_jobs(
                 parameters
             )
 
 
-        st.session_state["jobs"] = results
-
+        st.session_state[
+            "jobs"
+        ] = results
 
 
         st.success(
-            f"Found {len(results)} jobs"
+            f"Found {len(results)} Jobs"
         )
 
 

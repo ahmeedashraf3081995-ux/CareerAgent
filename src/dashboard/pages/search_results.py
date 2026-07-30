@@ -3,11 +3,13 @@ import streamlit as st
 from src.dashboard.components.job_card import show_job_card
 
 
+# ==================================================
+# Page Header
+# ==================================================
 
 st.title(
     "🎯 CareerAgent Job Matches"
 )
-
 
 
 jobs = st.session_state.get(
@@ -16,205 +18,146 @@ jobs = st.session_state.get(
 )
 
 
+# ==================================================
+# No Jobs
+# ==================================================
 
 if not jobs:
 
     st.warning(
-        "No jobs found. Please run a search first."
+        "No Jobs Found. Please Run A Search First."
     )
 
     st.stop()
 
 
-
-# ==========================
+# ==================================================
 # Sidebar Filters
-# ==========================
+# ==================================================
 
 st.sidebar.header(
     "🔎 Filters"
 )
 
 
-
+# ==================================================
 # Job Titles
+# ==================================================
 
 job_titles = sorted(
-
     list(
-
         set(
-
             [
-
                 job.get(
                     "job_title",
                     ""
                 )
-
                 for job in jobs
-
                 if job.get(
                     "job_title"
                 )
-
             ]
-
         )
-
     )
-
 )
-
 
 
 selected_titles = st.sidebar.multiselect(
-
     "Job Titles",
-
     job_titles
-
 )
 
 
-
-
+# ==================================================
 # Companies
+# ==================================================
 
 companies = sorted(
-
     list(
-
         set(
-
             [
-
                 job.get(
                     "company",
                     ""
                 )
-
                 for job in jobs
-
                 if job.get(
                     "company"
                 )
-
             ]
-
         )
-
     )
-
 )
-
 
 
 selected_companies = st.sidebar.multiselect(
-
     "Companies",
-
     companies
-
 )
 
 
-
-
-
+# ==================================================
 # Locations
+# ==================================================
 
 locations = sorted(
-
     list(
-
         set(
-
             [
-
                 job.get(
                     "location",
                     ""
                 )
-
                 for job in jobs
-
                 if job.get(
                     "location"
                 )
-
             ]
-
         )
-
     )
-
 )
-
 
 
 selected_locations = st.sidebar.multiselect(
-
     "Cities / Locations",
-
     locations
-
 )
 
 
-
-
-
-# Match score
+# ==================================================
+# Match Score
+# ==================================================
 
 minimum_score = st.sidebar.slider(
-
     "Minimum Match Score",
-
     min_value=0,
-
     max_value=100,
-
     value=0
-
 )
 
 
-
-
-
+# ==================================================
 # Sort
+# ==================================================
 
 sort_option = st.sidebar.selectbox(
-
     "Sort By",
-
     [
-
         "Best Match",
-
         "Company",
-
         "Job Title"
-
     ]
-
 )
 
 
-
-
-
-# ==========================
+# ==================================================
 # Apply Filters
-# ==========================
+# ==================================================
 
 filtered_jobs = []
 
 
-
 for job in jobs:
-
 
     if selected_titles:
 
@@ -224,8 +167,6 @@ for job in jobs:
 
             continue
 
-
-
     if selected_companies:
 
         if job.get(
@@ -233,8 +174,6 @@ for job in jobs:
         ) not in selected_companies:
 
             continue
-
-
 
     if selected_locations:
 
@@ -244,8 +183,6 @@ for job in jobs:
 
             continue
 
-
-
     if job.get(
         "match_score",
         0
@@ -253,81 +190,59 @@ for job in jobs:
 
         continue
 
-
-
     filtered_jobs.append(
         job
     )
 
 
-
-
-
-# ==========================
+# ==================================================
 # Sorting
-# ==========================
+# ==================================================
 
 if sort_option == "Best Match":
 
     filtered_jobs.sort(
-
         key=lambda x: x.get(
-
             "match_score",
-
             0
-
         ),
-
         reverse=True
-
     )
-
 
 elif sort_option == "Company":
 
     filtered_jobs.sort(
-
         key=lambda x: x.get(
-
             "company",
-
             ""
-
         )
-
     )
-
 
 elif sort_option == "Job Title":
 
     filtered_jobs.sort(
-
         key=lambda x: x.get(
-
             "job_title",
-
             ""
-
         )
-
     )
 
 
-
-
+# ==================================================
+# Results Count
+# ==================================================
 
 st.success(
-
-    f"{len(filtered_jobs)} jobs found"
-
+    f"{len(filtered_jobs)} Jobs Found"
 )
-
 
 
 st.divider()
 
 
+# ==================================================
+# Display Jobs
+# ==================================================
 
 for job in filtered_jobs:
 

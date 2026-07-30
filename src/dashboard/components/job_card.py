@@ -40,7 +40,6 @@ def show_job_card(job):
         ""
     )
 
-
     # ==================================================
     # Job Header
     # ==================================================
@@ -49,16 +48,13 @@ def show_job_card(job):
         title
     )
 
-
     st.write(
         f"🏢 {company}"
     )
 
-
     st.write(
         f"📍 {location}"
     )
-
 
     if posted_date:
 
@@ -72,13 +68,11 @@ def show_job_card(job):
             "📅 Posting Date Unavailable"
         )
 
-
     # ==================================================
     # Match Score
     # ==================================================
 
     col1, col2 = st.columns(2)
-
 
     with col1:
 
@@ -87,13 +81,11 @@ def show_job_card(job):
             f"{score}%"
         )
 
-
     with col2:
 
         st.info(
             level
         )
-
 
     # ==================================================
     # CV-Based Job Brief
@@ -103,7 +95,6 @@ def show_job_card(job):
         "cv_job_brief",
         ""
     )
-
 
     if brief:
 
@@ -116,7 +107,6 @@ def show_job_card(job):
                 brief
             )
 
-
     # ==================================================
     # Why This Matches
     # ==================================================
@@ -125,7 +115,6 @@ def show_job_card(job):
         "match_reason",
         ""
     )
-
 
     if reason:
 
@@ -137,13 +126,11 @@ def show_job_card(job):
                 reason
             )
 
-
     # ==================================================
     # Skills
     # ==================================================
 
     col1, col2 = st.columns(2)
-
 
     with col1:
 
@@ -151,12 +138,10 @@ def show_job_card(job):
             "✅ Matching Skills"
         )
 
-
         skills = job.get(
             "matched_skills",
             []
         )
-
 
         if skills:
 
@@ -172,19 +157,16 @@ def show_job_card(job):
                 "No Skills Detected"
             )
 
-
     with col2:
 
         st.warning(
             "⚠️ Missing Skills"
         )
 
-
         missing = job.get(
             "missing_skills",
             []
         )
-
 
         if missing:
 
@@ -200,7 +182,6 @@ def show_job_card(job):
                 "No Missing Skills Detected 🎯"
             )
 
-
     # ==================================================
     # CV Improvement Suggestions
     # ==================================================
@@ -209,7 +190,6 @@ def show_job_card(job):
         "cv_suggestions",
         []
     )
-
 
     if suggestions:
 
@@ -224,7 +204,6 @@ def show_job_card(job):
                     f"• {suggestion}"
                 )
 
-
     # ==================================================
     # Job Description
     # ==================================================
@@ -238,7 +217,6 @@ def show_job_card(job):
             ""
         )
 
-
         if description:
 
             st.write(
@@ -251,13 +229,11 @@ def show_job_card(job):
                 "Job Description Not Available"
             )
 
-
     # ==================================================
     # Actions
     # ==================================================
 
     col1, col2 = st.columns(2)
-
 
     with col1:
 
@@ -267,7 +243,6 @@ def show_job_card(job):
                 "🔗 Apply",
                 url
             )
-
 
     with col2:
 
@@ -283,6 +258,5 @@ def show_job_card(job):
             st.success(
                 "Job Saved"
             )
-
 
     st.divider()
