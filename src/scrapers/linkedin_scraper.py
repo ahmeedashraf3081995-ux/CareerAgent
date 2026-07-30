@@ -1,20 +1,87 @@
 from playwright.sync_api import sync_playwright
 import urllib.parse
 import time
+import shutil
+import os
 
 
-# ==================================================
+# ============================================================
 # Browser Configuration
-# ==================================================
+# ============================================================
 
 def launch_browser(playwright):
 
     """
-    Launch Chromium using Playwright's own browser.
+    Launch Chromium automatically.
 
-    This works on Windows, Linux and deployment
-    environments without hardcoding a Linux path.
+    On Linux / Streamlit Cloud:
+    use the system Chromium installed through packages.txt.
+
+    On Windows:
+    use Playwright's bundled Chromium.
+
+    This keeps the application compatible with both
+    local development and Streamlit Cloud.
     """
+
+    system_chromium = None
+
+    possible_browsers = [
+        "chromium",
+        "chromium-browser",
+        "google-chrome"
+    ]
+
+    for browser_name in possible_browsers:
+
+        browser_path = shutil.which(
+            browser_name
+        )
+
+        if browser_path:
+
+            system_chromium = browser_path
+
+            break
+
+
+    # ========================================================
+    # Linux / Streamlit Cloud
+    # ========================================================
+
+    if system_chromium:
+
+        print(
+            f"Using system Chromium: {system_chromium}"
+        )
+
+        return playwright.chromium.launch(
+
+            headless=True,
+
+            executable_path=system_chromium,
+
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--disable-setuid-sandbox"
+            ]
+
+        )
+
+
+    # ========================================================
+    # Windows / Local Development
+    # ========================================================
+
+    print(
+        "System Chromium not found."
+    )
+
+    print(
+        "Using Playwright Chromium."
+    )
 
     return playwright.chromium.launch(
 
@@ -29,9 +96,9 @@ def launch_browser(playwright):
     )
 
 
-# ==================================================
+# ============================================================
 # LinkedIn Job Search
-# ==================================================
+# ============================================================
 
 def scrape_linkedin(
     keyword="Demand Planner",
@@ -44,7 +111,9 @@ def scrape_linkedin(
     )
 
     jobs = []
+
     seen = set()
+
 
     with sync_playwright() as p:
 
@@ -65,6 +134,7 @@ def scrape_linkedin(
 
                 start = page_number * 25
 
+
                 url = (
                     "https://www.linkedin.com/jobs/search/?keywords="
                     +
@@ -79,9 +149,11 @@ def scrape_linkedin(
                     str(start)
                 )
 
+
                 print(
                     f"Opening LinkedIn page {page_number + 1}"
                 )
+
 
                 try:
 
@@ -105,22 +177,16 @@ def scrape_linkedin(
                     continue
 
 
-                # ------------------------------------------
-                # Give LinkedIn time to render
-                # ------------------------------------------
-
                 time.sleep(1)
 
-
-                # ------------------------------------------
-                # Find Job Cards
-                # ------------------------------------------
 
                 cards = page.locator(
                     ".base-search-card"
                 )
 
+
                 count = cards.count()
+
 
                 print(
                     "Cards found:",
@@ -128,20 +194,12 @@ def scrape_linkedin(
                 )
 
 
-                # ------------------------------------------
-                # Process Cards
-                # ------------------------------------------
-
                 for i in range(count):
 
                     try:
 
                         card = cards.nth(i)
 
-
-                        # ----------------------------------
-                        # Job Title
-                        # ----------------------------------
 
                         title = card.locator(
 
@@ -154,10 +212,6 @@ def scrape_linkedin(
                         ).strip()
 
 
-                        # ----------------------------------
-                        # Company
-                        # ----------------------------------
-
                         company = card.locator(
 
                             ".base-search-card__subtitle"
@@ -168,10 +222,6 @@ def scrape_linkedin(
 
                         ).strip()
 
-
-                        # ----------------------------------
-                        # Location
-                        # ----------------------------------
 
                         location_text = card.locator(
 
@@ -184,10 +234,6 @@ def scrape_linkedin(
                         ).strip()
 
 
-                        # ----------------------------------
-                        # Job URL
-                        # ----------------------------------
-
                         link = card.locator(
 
                             "a"
@@ -199,11 +245,8 @@ def scrape_linkedin(
                         )
 
 
-                        # ----------------------------------
-                        # Posting Date
-                        # ----------------------------------
-
                         posted_date = ""
+
 
                         date_selectors = [
 
@@ -254,10 +297,6 @@ def scrape_linkedin(
                                 continue
 
 
-                        # ----------------------------------
-                        # Unique Job Key
-                        # ----------------------------------
-
                         key = (
 
                             title.lower()
@@ -283,38 +322,30 @@ def scrape_linkedin(
                         )
 
 
-                        # ----------------------------------
-                        # Save Job
-                        # ----------------------------------
+                        jobs.append({
 
-                        jobs.append(
+                            "job_title":
+                                title,
 
-                            {
+                            "company":
+                                company,
 
-                                "job_title":
-                                    title,
+                            "location":
+                                location_text,
 
-                                "company":
-                                    company,
+                            "url":
+                                link,
 
-                                "location":
-                                    location_text,
+                            "source":
+                                "LinkedIn",
 
-                                "url":
-                                    link,
+                            "posted_date":
+                                posted_date,
 
-                                "source":
-                                    "LinkedIn",
+                            "description":
+                                ""
 
-                                "posted_date":
-                                    posted_date,
-
-                                "description":
-                                    ""
-
-                            }
-
-                        )
+                        })
 
 
                     except Exception as e:
@@ -343,12 +374,13 @@ def scrape_linkedin(
         len(jobs)
     )
 
+
     return jobs
 
 
-# ==================================================
+# ============================================================
 # Extract Job Description
-# ==================================================
+# ============================================================
 
 def extract_job_details(url):
 
@@ -373,16 +405,13 @@ def extract_job_details(url):
 
         )
 
+
         try:
 
             print(
                 f"Opening job details: {url}"
             )
 
-
-            # ------------------------------------------
-            # Open Job
-            # ------------------------------------------
 
             page.goto(
 
@@ -395,16 +424,8 @@ def extract_job_details(url):
             )
 
 
-            # ------------------------------------------
-            # Give LinkedIn Time To Render
-            # ------------------------------------------
-
             time.sleep(0.8)
 
-
-            # ------------------------------------------
-            # LinkedIn Description Selectors
-            # ------------------------------------------
 
             selectors = [
 
@@ -450,10 +471,6 @@ def extract_job_details(url):
 
                     continue
 
-
-            # ------------------------------------------
-            # Fallback
-            # ------------------------------------------
 
             if not description:
 
