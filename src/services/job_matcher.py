@@ -1,4 +1,4 @@
-import json
+import re
 
 from src.services.llm import (
     ask_ollama,
@@ -7,8 +7,199 @@ from src.services.llm import (
 
 
 # ============================================================
+# Python Skill Database
+# ============================================================
+
+SKILL_GROUPS = {
+
+    "Demand Planning": [
+        "demand planning",
+        "demand planner",
+        "demand forecasting",
+        "demand forecast",
+        "forecasting",
+        "forecast",
+    ],
+
+    "Supply Planning": [
+        "supply planning",
+        "supply planner",
+        "supply chain planning",
+    ],
+
+    "Inventory Optimization": [
+        "inventory optimization",
+        "inventory management",
+        "inventory planning",
+        "stock optimization",
+        "stock management",
+        "stock availability",
+        "inventory control",
+    ],
+
+    "S&OP": [
+        "s&op",
+        "sales and operations planning",
+        "sales & operations planning",
+    ],
+
+    "Forecasting": [
+        "forecasting",
+        "forecast",
+        "forecast accuracy",
+        "forecast error",
+        "demand forecast",
+    ],
+
+    "SAP": [
+        "sap",
+    ],
+
+    "Power BI": [
+        "power bi",
+        "powerbi",
+    ],
+
+    "Tableau": [
+        "tableau",
+    ],
+
+    "Excel": [
+        "excel",
+        "microsoft excel",
+    ],
+
+    "Python": [
+        "python",
+    ],
+
+    "Oracle": [
+        "oracle",
+    ],
+
+    "SQL": [
+        "sql",
+    ],
+
+    "Data Analysis": [
+        "data analysis",
+        "data analytics",
+        "analytical skills",
+        "analytics",
+    ],
+
+    "Supply Chain": [
+        "supply chain",
+        "supply chain management",
+    ],
+
+    "Merchandising": [
+        "merchandising",
+        "merchandise planning",
+        "merchandise planner",
+    ],
+
+    "OTB": [
+        "open-to-buy",
+        "open to buy",
+        "otb",
+    ],
+
+    "S&DP": [
+        "s&dp",
+        "sales and distribution planning",
+        "sales and demand planning",
+    ],
+
+    "Cross-functional Collaboration": [
+        "cross-functional",
+        "cross functional",
+        "cross-functional teams",
+        "cross functional teams",
+        "stakeholder management",
+        "stakeholder collaboration",
+    ],
+
+    "Regional Planning": [
+        "regional planning",
+        "regional teams",
+        "regional team",
+        "mena",
+        "gcc",
+    ],
+
+    "Leadership": [
+        "leadership",
+        "team management",
+        "people management",
+        "managed a team",
+        "manage a team",
+        "led a team",
+        "team lead",
+    ],
+
+    "Project Management": [
+        "project management",
+        "project manager",
+        "managed projects",
+        "project planning",
+    ],
+
+    "Process Improvement": [
+        "process improvement",
+        "continuous improvement",
+        "process optimization",
+        "automation",
+    ],
+}
+
+
+# ============================================================
 # Helpers
 # ============================================================
+
+def normalize_text(text):
+
+    if not text:
+        return ""
+
+    text = str(text).lower()
+
+    text = re.sub(
+        r"\s+",
+        " ",
+        text
+    )
+
+    return text.strip()
+
+
+def contains_skill(text, keywords):
+
+    text = normalize_text(text)
+
+    for keyword in keywords:
+
+        keyword = normalize_text(keyword)
+
+        if not keyword:
+            continue
+
+        if len(keyword) <= 4:
+
+            if re.search(
+                rf"\b{re.escape(keyword)}\b",
+                text
+            ):
+                return True
+
+        else:
+
+            if keyword in text:
+                return True
+
+    return False
+
 
 def safe_list(value):
 
@@ -32,34 +223,376 @@ def clean_score(value):
 
     return max(
         0,
-        min(100, score)
+        min(
+            100,
+            score
+        )
     )
 
 
 # ============================================================
-# Analyze One Batch Of Jobs
+# Python Skill Extraction
 # ============================================================
 
-def analyze_job_batch_with_ai(
+def extract_python_skills(text):
+
+    found = []
+
+    text = normalize_text(text)
+
+    if not text:
+        return found
+
+    for skill, keywords in SKILL_GROUPS.items():
+
+        if contains_skill(
+            text,
+            keywords
+        ):
+
+            found.append(skill)
+
+    return found
+
+
+# ============================================================
+# Python Skill Matching
+# ============================================================
+
+def calculate_skill_matching(
+    cv_text,
+    job_description
+):
+
+    cv_skills = extract_python_skills(
+        cv_text
+    )
+
+    job_skills = extract_python_skills(
+        job_description
+    )
+
+    matched = []
+    missing = []
+
+    for skill in job_skills:
+
+        if skill in cv_skills:
+
+            matched.append(
+                skill
+            )
+
+        else:
+
+            missing.append(
+                skill
+            )
+
+    # --------------------------------------------------------
+    # Transferable skills
+    # --------------------------------------------------------
+
+    transferable = []
+
+    transferable_map = {
+
+        "Demand Planning": [
+            "Supply Planning",
+            "Forecasting",
+            "Inventory Optimization"
+        ],
+
+        "Supply Planning": [
+            "Demand Planning",
+            "Inventory Optimization"
+        ],
+
+        "Inventory Optimization": [
+            "Demand Planning",
+            "Supply Planning"
+        ],
+
+        "Forecasting": [
+            "Demand Planning",
+            "Data Analysis"
+        ],
+
+        "Power BI": [
+            "Tableau",
+            "Data Analysis"
+        ],
+
+        "Tableau": [
+            "Power BI",
+            "Data Analysis"
+        ],
+
+        "Excel": [
+            "Data Analysis"
+        ],
+
+        "Supply Chain": [
+            "Demand Planning",
+            "Supply Planning",
+            "Inventory Optimization"
+        ],
+
+        "Merchandising": [
+            "Demand Planning",
+            "Inventory Optimization",
+            "OTB"
+        ],
+
+        "Regional Planning": [
+            "Cross-functional Collaboration",
+            "Supply Chain"
+        ],
+    }
+
+    for missing_skill in missing:
+
+        alternatives = transferable_map.get(
+            missing_skill,
+            []
+        )
+
+        for alternative in alternatives:
+
+            if alternative in cv_skills:
+
+                if alternative not in transferable:
+
+                    transferable.append(
+                        alternative
+                    )
+
+    return {
+
+        "cv_skills": cv_skills,
+
+        "job_skills": job_skills,
+
+        "matched_skills": matched,
+
+        "missing_skills": missing,
+
+        "transferable_skills": transferable
+    }
+
+
+# ============================================================
+# Python CV Enhancement
+# ============================================================
+
+def generate_cv_enhancement(
+    cv_text,
+    matched_skills,
+    missing_skills,
+    transferable_skills
+):
+
+    if not matched_skills:
+
+        if missing_skills:
+
+            return (
+                "Your CV has limited direct alignment with "
+                "this role. Highlight any genuine relevant "
+                "experience related to the missing requirements."
+            )
+
+        return (
+            "Review the job requirements and emphasize "
+            "the most relevant experience from your CV."
+        )
+
+    priority = [
+
+        "Demand Planning",
+        "Supply Planning",
+        "Inventory Optimization",
+        "Forecasting",
+        "S&OP",
+        "SAP",
+        "Power BI",
+        "Tableau",
+        "Excel",
+        "Data Analysis",
+        "Supply Chain",
+        "Regional Planning",
+        "Cross-functional Collaboration",
+        "Leadership",
+        "Process Improvement"
+    ]
+
+    selected = []
+
+    for skill in priority:
+
+        if skill in matched_skills:
+
+            selected.append(
+                skill
+            )
+
+        if len(selected) >= 4:
+            break
+
+    if selected:
+
+        skill_text = ", ".join(
+            selected
+        )
+
+        message = (
+            "Emphasize your "
+            + skill_text
+            + " experience in the CV, "
+            "preferably with measurable business impact."
+        )
+
+    else:
+
+        message = (
+            "Emphasize the most relevant responsibilities "
+            "and measurable achievements from your CV."
+        )
+
+    if transferable_skills:
+
+        transfer_text = ", ".join(
+            transferable_skills[:2]
+        )
+
+        message += (
+            f" Also highlight your {transfer_text} "
+            "experience where relevant."
+        )
+
+    if missing_skills:
+
+        missing_text = ", ".join(
+            missing_skills[:2]
+        )
+
+        message += (
+            f" If you have genuine exposure to "
+            f"{missing_text}, make it more visible."
+        )
+
+    return message
+
+
+# ============================================================
+# Prepare Python Analysis For All Jobs
+# ============================================================
+
+def prepare_python_analysis(
     cv_text,
     jobs
 ):
 
-    if not jobs:
-        return []
+    print(
+        f"Python analyzing {len(jobs)} jobs..."
+    )
+
+    for number, job in enumerate(
+        jobs,
+        start=1
+    ):
+
+        description = job.get(
+            "description",
+            ""
+        )
+
+        skill_analysis = calculate_skill_matching(
+
+            cv_text,
+
+            (
+                job.get(
+                    "job_title",
+                    ""
+                )
+                + " "
+                + description
+            )
+
+        )
+
+        job["matched_skills"] = (
+            skill_analysis[
+                "matched_skills"
+            ]
+        )
+
+        job["missing_skills"] = (
+            skill_analysis[
+                "missing_skills"
+            ]
+        )
+
+        job["transferable_skills"] = (
+            skill_analysis[
+                "transferable_skills"
+            ]
+        )
+
+        job["cv_enhancement"] = (
+            generate_cv_enhancement(
+
+                cv_text,
+
+                job[
+                    "matched_skills"
+                ],
+
+                job[
+                    "missing_skills"
+                ],
+
+                job[
+                    "transferable_skills"
+                ]
+
+            )
+        )
+
+    print(
+        "Python job analysis completed."
+    )
+
+    return jobs
 
 
-    job_data = []
+# ============================================================
+# Compact Job Data For AI
+# ============================================================
 
+def prepare_ai_jobs(jobs):
+
+    ai_jobs = []
 
     for index, job in enumerate(jobs):
 
-        job_data.append({
+        description = job.get(
+            "description",
+            ""
+        )
+
+        # Prevent enormous prompts
+        description = str(
+            description
+        )[:3000]
+
+        ai_jobs.append({
 
             "index":
                 index,
 
-            "job_title":
+            "title":
                 job.get(
                     "job_title",
                     ""
@@ -78,65 +611,89 @@ def analyze_job_batch_with_ai(
                 ),
 
             "description":
-                job.get(
-                    "description",
-                    ""
-                )
+                description,
 
+            # Python already calculated these.
+            # AI does not need to calculate them again.
+            "matched_skills":
+                job.get(
+                    "matched_skills",
+                    []
+                ),
+
+            "missing_skills":
+                job.get(
+                    "missing_skills",
+                    []
+                ),
+
+            "transferable_skills":
+                job.get(
+                    "transferable_skills",
+                    []
+                )
         })
 
+    return ai_jobs
+
+
+# ============================================================
+# ONE AI CALL FOR ALL JOBS
+# ============================================================
+
+def analyze_all_jobs_with_ai(
+    cv_text,
+    jobs
+):
+
+    if not jobs:
+        return {}
+
+    ai_jobs = prepare_ai_jobs(
+        jobs
+    )
 
     prompt = f"""
-You are CareerAgent's expert recruitment and career-matching AI.
+You are CareerAgent's recruitment matching engine.
 
-Analyze ALL jobs below against the candidate's CV.
-
-You must analyze each job independently.
+Evaluate ALL jobs against the candidate's CV.
 
 IMPORTANT:
 
-Analyze meaning and experience, not just exact keywords.
+This is a BATCH analysis.
 
-For example:
+You MUST analyze every job.
 
-"inventory optimization"
+Do NOT skip jobs.
 
-and
+Do NOT invent experience.
 
-"optimized stock levels and availability"
-
-may represent the same underlying capability.
+Use semantic understanding rather than simple keyword matching.
 
 Consider:
 
-1. Relevant skills
-2. Transferable skills
-3. Actual responsibilities
-4. Job title relevance
-5. Seniority
-6. Years of experience
-7. Industry experience
-8. Technical tools
-9. Planning experience
-10. Leadership
-11. Business exposure
-12. Job requirements
-13. Career progression
-14. Overall suitability
+- Actual candidate experience
+- Responsibilities
+- Career progression
+- Seniority
+- Job title
+- Industry
+- Technical background
+- Leadership
+- Planning experience
+- Job responsibilities
+- Job requirements
+- Overall career suitability
 
-FACTUAL RULES:
+Python has already calculated:
 
-Never invent experience.
+- matched skills
+- missing skills
+- transferable skills
 
-Never assume the candidate has a skill unless the CV provides reasonable evidence.
+Do NOT recalculate those.
 
-A skill can be considered matched when the candidate demonstrates equivalent or transferable experience.
-
-A skill should be considered missing only when the job genuinely requires it and the CV provides no reasonable evidence.
-
-Do not punish the candidate simply because the exact keyword is absent.
-
-Do not reward the candidate simply because a keyword appears without supporting experience.
+Your job is to judge the overall career fit.
 
 --------------------------------------------------
 CANDIDATE CV
@@ -148,114 +705,80 @@ CANDIDATE CV
 JOBS
 --------------------------------------------------
 
-{json.dumps(job_data, ensure_ascii=False)}
-
---------------------------------------------------
-SCORING
---------------------------------------------------
-
-Give an overall score from 0 to 100.
-
-90-100:
-Exceptional fit.
-
-80-89:
-Excellent fit.
-
-70-79:
-Good fit.
-
-60-69:
-Moderate fit.
-
-50-59:
-Partial fit.
-
-0-49:
-Weak fit.
-
-Be realistic and selective.
+{ai_jobs}
 
 --------------------------------------------------
 RETURN JSON ONLY
 --------------------------------------------------
 
-Return exactly this structure:
+Return exactly:
 
 {{
-    "jobs": [
-
+    "results": [
         {{
             "index": 0,
-
             "match_score": 0,
-
             "match_level": "",
-
-            "matched_skills": [],
-
-            "missing_skills": [],
-
-            "transferable_skills": [],
-
             "title_match": 0,
-
             "seniority_match": 0,
-
             "industry_match": 0,
-
             "experience_match": 0,
-
             "technical_match": 0,
-
             "leadership_match": 0,
-
             "ranking_reason": "",
-
             "match_reason": "",
-
             "strengths": [],
-
             "gaps": [],
-
             "recommendation": ""
         }}
-
     ]
 }}
 
-IMPORTANT:
+RULES:
 
-Return exactly ONE result for EVERY job.
+- Return ONE result for EVERY job.
+- Keep the original index.
+- Never invent experience.
+- All scores must be integers from 0 to 100.
+- Keep explanations concise.
+- match_level must be one of:
 
-The "index" must correspond to the job index provided above.
+"Exceptional fit"
+"Excellent fit"
+"Good fit"
+"Moderate fit"
+"Partial fit"
+"Weak fit"
 
-All scores must be integers from 0 to 100.
+Scoring:
 
-Use concise explanations.
+90-100 = Exceptional fit
+80-89 = Excellent fit
+70-79 = Good fit
+60-69 = Moderate fit
+50-59 = Partial fit
+0-49 = Weak fit
 
 Return valid JSON only.
 """
 
-
     system_prompt = """
-You are CareerAgent's recruitment intelligence engine.
+You are CareerAgent's batch recruitment matching engine.
 
-Analyze multiple jobs against one candidate CV.
+Analyze multiple jobs in one request.
 
-Use semantic understanding rather than simple keyword matching.
+Accuracy is more important than generosity.
 
 Never fabricate candidate experience.
 
-Analyze every supplied job.
-
 Return valid JSON only.
-
-Accuracy is more important than generosity.
 """
 
-
     try:
+
+        print(
+            f"AI analyzing {len(jobs)} jobs in ONE request..."
+        )
 
         response = ask_ollama(
 
@@ -263,161 +786,175 @@ Accuracy is more important than generosity.
 
             system_prompt=system_prompt,
 
-            temperature=0,
+            temperature=0.1,
 
             json_mode=True
 
         )
 
-
         data = extract_json(
             response
         )
-
 
         if not isinstance(
             data,
             dict
         ):
 
-            return []
-
+            return {}
 
         results = data.get(
-            "jobs",
+            "results",
             []
         )
-
 
         if not isinstance(
             results,
             list
         ):
 
-            return []
+            return {}
 
+        analysis_map = {}
 
-        return results
+        for item in results:
 
+            if not isinstance(
+                item,
+                dict
+            ):
+                continue
+
+            try:
+
+                index = int(
+                    item.get(
+                        "index",
+                        -1
+                    )
+                )
+
+            except Exception:
+
+                continue
+
+            if index < 0:
+                continue
+
+            analysis_map[index] = item
+
+        print(
+            f"AI successfully analyzed "
+            f"{len(analysis_map)}/{len(jobs)} jobs."
+        )
+
+        return analysis_map
 
     except Exception as e:
 
         print(
-            "AI batch analysis error:",
+            "Batch AI job analysis error:",
             e
         )
 
-        return []
+        return {}
 
 
 # ============================================================
-# Apply AI Analysis
+# Apply AI Result To Job
 # ============================================================
 
-def apply_analysis(
+def apply_ai_analysis(
     job,
     analysis
 ):
 
-    job["match_score"] = clean_score(
+    if not analysis:
 
+        job["match_score"] = 0
+
+        job["title_score"] = 0
+
+        job["seniority_score"] = 0
+
+        job["industry_score"] = 0
+
+        job["experience_score"] = 0
+
+        job["technical_score"] = 0
+
+        job["leadership_score"] = 0
+
+        job["match_level"] = (
+            "AI Analysis Unavailable"
+        )
+
+        job["match_reason"] = (
+            "The AI matching service was "
+            "temporarily unavailable. Python "
+            "skill matching is still available."
+        )
+
+        job["ai_ranking_reason"] = ""
+
+        job["strengths"] = []
+
+        job["gaps"] = []
+
+        job["recommendation"] = ""
+
+        job["ai_analyzed"] = False
+
+        return job
+
+    job["match_score"] = clean_score(
         analysis.get(
             "match_score",
             0
         )
-
     )
-
-
-    job["matched_skills"] = safe_list(
-
-        analysis.get(
-            "matched_skills",
-            []
-        )
-
-    )
-
-
-    job["missing_skills"] = safe_list(
-
-        analysis.get(
-            "missing_skills",
-            []
-        )
-
-    )
-
-
-    job["transferable_skills"] = safe_list(
-
-        analysis.get(
-            "transferable_skills",
-            []
-        )
-
-    )
-
 
     job["title_score"] = clean_score(
-
         analysis.get(
             "title_match",
             0
         )
-
     )
 
-
     job["seniority_score"] = clean_score(
-
         analysis.get(
             "seniority_match",
             0
         )
-
     )
 
-
     job["industry_score"] = clean_score(
-
         analysis.get(
             "industry_match",
             0
         )
-
     )
 
-
     job["experience_score"] = clean_score(
-
         analysis.get(
             "experience_match",
             0
         )
-
     )
 
-
     job["technical_score"] = clean_score(
-
         analysis.get(
             "technical_match",
             0
         )
-
     )
 
-
     job["leadership_score"] = clean_score(
-
         analysis.get(
             "leadership_match",
             0
         )
-
     )
-
 
     job["match_level"] = (
 
@@ -431,7 +968,6 @@ def apply_analysis(
         "AI Match"
 
     )
-
 
     job["match_reason"] = (
 
@@ -449,7 +985,6 @@ def apply_analysis(
 
     )
 
-
     job["ai_ranking_reason"] = (
 
         analysis.get(
@@ -459,26 +994,19 @@ def apply_analysis(
 
     )
 
-
     job["strengths"] = safe_list(
-
         analysis.get(
             "strengths",
             []
         )
-
     )
 
-
     job["gaps"] = safe_list(
-
         analysis.get(
             "gaps",
             []
         )
-
     )
-
 
     job["recommendation"] = (
 
@@ -489,220 +1017,81 @@ def apply_analysis(
 
     )
 
-
     job["ai_analyzed"] = True
-
 
     return job
 
 
 # ============================================================
-# Main Job Matching Function
+# Main Job Matching
 # ============================================================
 
 def match_jobs(
     cv_text,
-    jobs,
-    batch_size=10
+    jobs
 ):
 
     if not cv_text:
 
         return jobs or []
 
-
     if not jobs:
 
         return []
 
+    # ========================================================
+    # STEP 1
+    # Python handles ALL jobs
+    # ========================================================
 
-    results = []
+    jobs = prepare_python_analysis(
 
+        cv_text,
 
-    total_jobs = len(jobs)
-
-    total_batches = (
-
-        (total_jobs + batch_size - 1)
-        // batch_size
+        jobs
 
     )
 
+    # ========================================================
+    # STEP 2
+    # ONE AI CALL
+    # ========================================================
 
-    print(
-        f"AI analyzing {total_jobs} jobs "
-        f"in {total_batches} batches..."
+    analysis_map = analyze_all_jobs_with_ai(
+
+        cv_text,
+
+        jobs
+
     )
 
-
     # ========================================================
-    # Process Jobs In Batches
+    # STEP 3
+    # Apply AI results
     # ========================================================
 
-    for batch_number, start in enumerate(
-
-        range(
-            0,
-            total_jobs,
-            batch_size
-        ),
-
-        start=1
-
+    for index, job in enumerate(
+        jobs
     ):
 
-        batch = jobs[
+        analysis = analysis_map.get(
+            index
+        )
 
-            start:
-            start + batch_size
+        apply_ai_analysis(
 
-        ]
+            job,
 
-
-        print(
-
-            f"Analyzing batch "
-            f"{batch_number}/{total_batches} "
-            f"({len(batch)} jobs)..."
+            analysis
 
         )
 
-
-        analyses = analyze_job_batch_with_ai(
-
-            cv_text,
-
-            batch
-
-        )
-
-
-        # ----------------------------------------------------
-        # Create Analysis Map
-        # ----------------------------------------------------
-
-        analysis_map = {}
-
-
-        for analysis in analyses:
-
-            if not isinstance(
-                analysis,
-                dict
-            ):
-
-                continue
-
-
-            try:
-
-                index = int(
-
-                    analysis.get(
-                        "index",
-                        -1
-                    )
-
-                )
-
-            except Exception:
-
-                continue
-
-
-            if 0 <= index < len(batch):
-
-                analysis_map[index] = analysis
-
-
-        # ----------------------------------------------------
-        # Apply Results
-        # ----------------------------------------------------
-
-        for index, job in enumerate(
-            batch
-        ):
-
-            analysis = analysis_map.get(
-                index
-            )
-
-
-            if analysis:
-
-                job = apply_analysis(
-
-                    job,
-
-                    analysis
-
-                )
-
-
-            else:
-
-                print(
-
-                    "AI analysis missing for:",
-
-                    job.get(
-                        "job_title",
-                        ""
-                    )
-
-                )
-
-
-                job["match_score"] = 0
-
-                job["matched_skills"] = []
-
-                job["missing_skills"] = []
-
-                job["transferable_skills"] = []
-
-                job["title_score"] = 0
-
-                job["seniority_score"] = 0
-
-                job["industry_score"] = 0
-
-                job["experience_score"] = 0
-
-                job["technical_score"] = 0
-
-                job["leadership_score"] = 0
-
-                job["match_level"] = (
-                    "Unable to Analyze"
-                )
-
-                job["match_reason"] = (
-                    "AI analysis could not be "
-                    "completed for this job."
-                )
-
-                job["ai_ranking_reason"] = ""
-
-                job["strengths"] = []
-
-                job["gaps"] = []
-
-                job["recommendation"] = ""
-
-                job["ai_analyzed"] = False
-
-
-            results.append(
-                job
-            )
-
-
     # ========================================================
-    # Sort By Match Score
+    # STEP 4
+    # Sort
     # ========================================================
 
-    results.sort(
+    jobs.sort(
 
         key=lambda x: x.get(
             "match_score",
@@ -713,25 +1102,20 @@ def match_jobs(
 
     )
 
-
     # ========================================================
-    # Assign Rank
+    # STEP 5
+    # Rank
     # ========================================================
 
     for rank, job in enumerate(
-
-        results,
-
+        jobs,
         start=1
-
     ):
 
         job["rank"] = rank
 
-
     print(
-        "AI batch job matching completed."
+        "AI job matching completed."
     )
 
-
-    return results
+    return jobs
