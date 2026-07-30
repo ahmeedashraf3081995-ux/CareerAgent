@@ -1,4 +1,3 @@
-import json
 import re
 
 from src.services.llm import (
@@ -8,13 +7,12 @@ from src.services.llm import (
 
 
 # ============================================================
-# Text Helpers
+# Helpers
 # ============================================================
 
 def clean_text(text):
 
     if not text:
-
         return ""
 
     text = re.sub(
@@ -28,28 +26,32 @@ def clean_text(text):
 
 def safe_list(value):
 
-    if isinstance(
-        value,
-        list
-    ):
-
+    if isinstance(value, list):
         return value
 
     return []
 
 
-def tokenize(text):
+def safe_int(value, default=0):
 
-    return set(
-        re.findall(
-            r"\b[a-zA-Z][a-zA-Z0-9+#&.-]{2,}\b",
-            text.lower()
-        )
+    try:
+        return int(float(value))
+    except Exception:
+        return default
+
+
+def clean_score(value):
+
+    score = safe_int(value)
+
+    return max(
+        0,
+        min(100, score)
     )
 
 
 # ============================================================
-# ATS Score
+# AI ATS Evaluation
 # ============================================================
 
 def calculate_ats_score(
@@ -70,240 +72,306 @@ def calculate_ats_score(
         job_description
     )
 
+
     if not cv_text:
 
         return 0
 
-    cv_lower = cv_text.lower()
 
-    score = 0
+    prompt = f"""
+You are CareerAgent's professional ATS and recruitment evaluation engine.
 
+Evaluate how ATS-friendly and relevant this CV is for the target role.
 
-    # ========================================================
-    # 1. CV Structure
-    # ========================================================
+Do NOT simply count keywords.
 
-    standard_sections = [
+Evaluate the actual quality and meaning of the CV.
 
-        "summary",
-        "professional summary",
-        "experience",
-        "work experience",
-        "professional experience",
-        "education",
-        "skills",
-        "certifications",
-        "projects"
+Consider:
 
-    ]
+1. Relevance to the target role
+2. Relevant keywords and terminology
+3. Skills alignment
+4. Professional summary quality
+5. Experience relevance
+6. Achievement orientation
+7. Quantified achievements
+8. Action-oriented language
+9. Clear job titles
+10. Standard CV sections
+11. Readability
+12. ATS-friendly structure
+13. Education and certifications where relevant
+14. Consistency
+15. Overall recruiter searchability
+16. Whether important job requirements are genuinely supported
+17. Whether the CV contains unnecessary or irrelevant information
 
-    found_sections = 0
+IMPORTANT:
 
-    for section in standard_sections:
+Do not reward keyword stuffing.
 
-        if section in cv_lower:
+Do not penalize the candidate merely because an exact keyword is absent
+if equivalent experience is clearly demonstrated.
 
-            found_sections += 1
+Do not assume a skill exists without evidence.
 
-    score += min(
-        found_sections * 3,
-        20
-    )
+Do not invent information.
 
+CV:
+--------------------------------------------------
+{cv_text}
+--------------------------------------------------
 
-    # ========================================================
-    # 2. Contact Information
-    # ========================================================
+TARGET JOB:
+--------------------------------------------------
+{target_job or "Not Provided"}
+--------------------------------------------------
 
-    if re.search(
-        r"\b[\w\.-]+@[\w\.-]+\.\w+\b",
-        cv_text
-    ):
+JOB DESCRIPTION:
+--------------------------------------------------
+{job_description or "Not Provided"}
+--------------------------------------------------
 
-        score += 5
+Return ONLY valid JSON.
 
+Use exactly:
 
-    if re.search(
-        r"\+?\d[\d\s\-\(\)]{7,}",
-        cv_text
-    ):
+{{
+    "ats_score": 0,
+    "relevance_score": 0,
+    "keyword_score": 0,
+    "structure_score": 0,
+    "experience_score": 0,
+    "achievement_score": 0,
+    "readability_score": 0,
+    "strengths": [],
+    "weaknesses": [],
+    "missing_keywords": [],
+    "supported_keywords": [],
+    "improvement_suggestions": [],
+    "overall_assessment": ""
+}}
 
-        score += 5
+All scores must be integers from 0 to 100.
 
+The final ats_score must represent your overall professional assessment.
 
-    # ========================================================
-    # 3. Quantification
-    # ========================================================
-
-    numbers = re.findall(
-        r"\b\d+(?:\.\d+)?%?\b",
-        cv_text
-    )
-
-
-    if len(numbers) >= 10:
-
-        score += 10
-
-    elif len(numbers) >= 5:
-
-        score += 7
-
-    elif len(numbers) >= 2:
-
-        score += 4
-
-
-    # ========================================================
-    # 4. Keyword Match
-    # ========================================================
-
-    reference_text = (
-        target_job
-        + " "
-        + job_description
-    ).strip()
+Be realistic and selective.
+"""
 
 
-    if reference_text:
+    system_prompt = """
+You are CareerAgent's ATS evaluation engine.
 
-        reference_words = tokenize(
-            reference_text
+Evaluate CVs professionally and objectively.
+
+Never fabricate candidate information.
+
+Do not use simplistic keyword counting.
+
+Use semantic understanding.
+
+Return valid JSON only.
+"""
+
+
+    try:
+
+        response = ask_ollama(
+
+            prompt,
+
+            system_prompt=system_prompt,
+
+            temperature=0.1,
+
+            json_mode=True
+
         )
 
 
-        stop_words = {
-
-            "the",
-            "and",
-            "for",
-            "with",
-            "from",
-            "this",
-            "that",
-            "your",
-            "our",
-            "you",
-            "are",
-            "will",
-            "have",
-            "has",
-            "job",
-            "role",
-            "work",
-            "working",
-            "years",
-            "year"
-
-        }
+        data = extract_json(
+            response
+        )
 
 
-        reference_words = {
+        if not isinstance(
+            data,
+            dict
+        ):
 
-            word
-            for word in reference_words
-            if word not in stop_words
-
-        }
+            return 0
 
 
-        if reference_words:
-
-            matched = sum(
-
-                1
-                for word in reference_words
-                if word in cv_lower
-
+        return clean_score(
+            data.get(
+                "ats_score",
+                0
             )
+        )
 
 
-            keyword_ratio = (
+    except Exception as e:
 
-                matched
-                /
-                len(reference_words)
+        print(
+            "AI ATS evaluation error:",
+            e
+        )
 
-            )
-
-
-            score += round(
-
-                min(
-
-                    keyword_ratio * 35,
-                    35
-
-                )
-
-            )
+        return 0
 
 
-    # ========================================================
-    # 5. CV Length
-    # ========================================================
+# ============================================================
+# Detailed AI ATS Evaluation
+# ============================================================
 
-    if len(cv_text) >= 1500:
+def evaluate_ats_with_ai(
+    cv_text,
+    target_job="",
+    job_description=""
+):
 
-        score += 5
+    prompt = f"""
+You are CareerAgent's senior ATS and recruitment evaluator.
+
+Perform a detailed evaluation of this CV against the target job.
+
+Evaluate the candidate based on real evidence.
+
+Never invent experience.
+
+Consider semantic equivalents rather than exact keyword matching.
+
+Evaluate:
+
+- Job relevance
+- Skills
+- Experience
+- Seniority
+- Responsibilities
+- Achievements
+- Quantification
+- Keywords
+- ATS structure
+- Readability
+- Professional summary
+- Core skills
+- Experience bullets
+- Education
+- Certifications
+- Overall recruiter appeal
+
+Identify:
+
+- Strong areas
+- Weak areas
+- Supported job keywords
+- Important missing keywords
+- Concrete CV improvements
+
+IMPORTANT:
+
+A missing keyword should only be recommended when the candidate's
+existing experience reasonably supports using it.
+
+Do not recommend falsely claiming skills.
+
+CV:
+--------------------------------------------------
+{cv_text}
+--------------------------------------------------
+
+TARGET JOB:
+--------------------------------------------------
+{target_job or "Not Provided"}
+--------------------------------------------------
+
+JOB DESCRIPTION:
+--------------------------------------------------
+{job_description or "Not Provided"}
+--------------------------------------------------
+
+Return ONLY JSON:
+
+{{
+    "ats_score": 0,
+    "relevance_score": 0,
+    "keyword_score": 0,
+    "structure_score": 0,
+    "experience_score": 0,
+    "achievement_score": 0,
+    "readability_score": 0,
+
+    "strengths": [],
+
+    "weaknesses": [],
+
+    "missing_keywords": [],
+
+    "supported_keywords": [],
+
+    "improvement_suggestions": [],
+
+    "overall_assessment": ""
+}}
+
+All scores must be integers from 0 to 100.
+"""
 
 
-    if len(cv_text) >= 3000:
+    system_prompt = """
+You are CareerAgent's professional ATS intelligence engine.
 
-        score += 5
+Accuracy is more important than generosity.
 
+Never fabricate candidate experience.
 
-    # ========================================================
-    # 6. Action Language
-    # ========================================================
+Never recommend falsely claiming a skill.
 
-    action_words = [
-
-        "managed",
-        "led",
-        "developed",
-        "implemented",
-        "optimized",
-        "improved",
-        "analyzed",
-        "created",
-        "delivered",
-        "increased",
-        "reduced",
-        "launched",
-        "coordinated",
-        "forecasted",
-        "planned"
-
-    ]
+Return valid JSON only.
+"""
 
 
-    action_count = sum(
+    try:
 
-        1
-        for word in action_words
-        if word in cv_lower
+        response = ask_ollama(
 
-    )
+            prompt,
 
+            system_prompt=system_prompt,
 
-    if action_count >= 8:
+            temperature=0.1,
 
-        score += 10
+            json_mode=True
 
-    elif action_count >= 4:
-
-        score += 6
-
-    elif action_count >= 2:
-
-        score += 3
+        )
 
 
-    return min(
-        score,
-        100
-    )
+        data = extract_json(
+            response
+        )
+
+
+        if not isinstance(
+            data,
+            dict
+        ):
+
+            return {}
+
+
+        return data
+
+
+    except Exception as e:
+
+        print(
+            "AI ATS detailed evaluation error:",
+            e
+        )
+
+        return {}
 
 
 # ============================================================
@@ -319,13 +387,12 @@ def generate_cv(
 ):
 
     prompt = f"""
-You are an expert CV writer, recruiter and ATS optimization specialist.
+You are CareerAgent's expert CV writer, recruiter and ATS optimization
+specialist.
 
-You are working inside CareerAgent.
+Your task is to improve the candidate's CV for the target role.
 
-Your task is to improve the candidate's CV.
-
-IMPORTANT FACTUAL RULES:
+FACTUAL RULES:
 
 NEVER invent factual information.
 
@@ -351,90 +418,67 @@ You may improve wording, structure, clarity and professionalism.
 
 You may tailor wording to the target role.
 
-You may use keywords from the job description ONLY when the
-candidate's existing experience supports those keywords.
+You may use terminology from the job description ONLY when the
+candidate's existing experience supports that terminology.
 
-If something requested by the user is not supported by the CV,
-do NOT add it as fact.
+If the user requests something unsupported by the CV, do not add it
+as fact.
 
-Instead, mention it in the warnings array.
+Instead, mention it in warnings.
 
 CURRENT CV:
-----------------
+--------------------------------------------------
 {cv_text}
-----------------
+--------------------------------------------------
 
 TARGET JOB:
+--------------------------------------------------
 {target_job or "Not Provided"}
+--------------------------------------------------
 
 JOB DESCRIPTION:
-----------------
+--------------------------------------------------
 {job_description or "Not Provided"}
-----------------
+--------------------------------------------------
 
 USER INSTRUCTIONS:
-----------------
+--------------------------------------------------
 {user_instructions or "No Additional Instructions"}
-----------------
+--------------------------------------------------
 
 PREVIOUS CONVERSATION:
-----------------
+--------------------------------------------------
 {conversation or "None"}
-----------------
+--------------------------------------------------
 
 
 OBJECTIVES:
 
 1. Create a professional ATS-friendly CV.
-
 2. Preserve factual experience.
-
 3. Improve wording.
-
 4. Use strong action verbs.
-
 5. Improve weak bullet points.
-
 6. Preserve existing numbers.
-
 7. Never fabricate numbers.
-
 8. Never fabricate skills.
-
 9. Never fabricate responsibilities.
-
 10. Tailor the CV to the target role when provided.
-
-11. Use relevant job-description keywords when supported.
-
+11. Use relevant supported job-description terminology.
 12. Remove unnecessary wording.
-
 13. Remove repetition.
-
 14. Improve the professional summary.
-
 15. Improve the skills section using supported skills.
-
 16. Keep the CV concise.
-
 17. Use standard ATS-friendly section names.
-
 18. Use plain text.
-
 19. Do not use tables.
-
 20. Do not use columns.
-
 21. Do not use graphics.
-
 22. Do not use icons.
-
 23. Do not use emojis.
-
 24. Do not add references unless already present.
-
 25. Do not add unsupported information.
-
 
 CV STRUCTURE:
 
@@ -456,7 +500,6 @@ ADDITIONAL INFORMATION
 
 Only include sections supported by the original CV.
 
-
 BULLETS:
 
 Use bullet points for experience.
@@ -472,19 +515,13 @@ Never invent a result.
 
 RETURN ONLY JSON.
 
-Use exactly this structure:
+Use exactly:
 
 {{
     "cv_text": "FULL UPDATED CV HERE",
     "summary": "SHORT DESCRIPTION OF WHAT WAS IMPROVED",
-    "changes": [
-        "Change 1",
-        "Change 2",
-        "Change 3"
-    ],
-    "warnings": [
-        "Anything requiring confirmation"
-    ]
+    "changes": [],
+    "warnings": []
 }}
 """
 
@@ -502,35 +539,47 @@ Do not include markdown outside the JSON.
 """
 
 
-    # ========================================================
-    # Ask Local Ollama AI
-    # ========================================================
+    try:
 
-    content = ask_ollama(
+        content = ask_ollama(
 
-        prompt,
+            prompt,
 
-        system_prompt=system_prompt,
+            system_prompt=system_prompt,
 
-        temperature=0.1,
+            temperature=0.1,
 
-        json_mode=True
+            json_mode=True
 
-    )
+        )
 
 
-    # ========================================================
-    # Extract JSON
-    # ========================================================
-
-    data = extract_json(
-        content
-    )
+        data = extract_json(
+            content
+        )
 
 
-    # ========================================================
-    # CV Result
-    # ========================================================
+    except Exception as e:
+
+        print(
+            "AI CV generation error:",
+            e
+        )
+
+        return {
+
+            "cv_text": cv_text,
+
+            "summary": "",
+
+            "changes": [],
+
+            "warnings": [
+                "AI CV optimization could not be completed."
+            ]
+
+        }
+
 
     cv_result = data.get(
         "cv_text",
@@ -570,7 +619,7 @@ Do not include markdown outside the JSON.
 
 
 # ============================================================
-# Optimize CV
+# Full AI CV Optimization
 # ============================================================
 
 def optimize_cv(
@@ -581,7 +630,12 @@ def optimize_cv(
     conversation=""
 ):
 
-    before_score = calculate_ats_score(
+    print(
+        "Running AI ATS evaluation before optimization..."
+    )
+
+
+    before_evaluation = evaluate_ats_with_ai(
 
         cv_text,
 
@@ -591,6 +645,25 @@ def optimize_cv(
 
     )
 
+
+    before_score = clean_score(
+
+        before_evaluation.get(
+            "ats_score",
+            0
+        )
+
+    )
+
+
+    print(
+        f"AI ATS score before optimization: {before_score}"
+    )
+
+
+    # ========================================================
+    # Generate Optimized CV
+    # ========================================================
 
     result = generate_cv(
 
@@ -607,7 +680,16 @@ def optimize_cv(
     )
 
 
-    after_score = calculate_ats_score(
+    # ========================================================
+    # Evaluate Optimized CV
+    # ========================================================
+
+    print(
+        "Running AI ATS evaluation after optimization..."
+    )
+
+
+    after_evaluation = evaluate_ats_with_ai(
 
         result["cv_text"],
 
@@ -618,9 +700,32 @@ def optimize_cv(
     )
 
 
-    result["before_score"] = before_score
+    after_score = clean_score(
 
-    result["after_score"] = after_score
+        after_evaluation.get(
+            "ats_score",
+            0
+        )
+
+    )
+
+
+    print(
+        f"AI ATS score after optimization: {after_score}"
+    )
+
+
+    # ========================================================
+    # Attach AI Evaluation
+    # ========================================================
+
+    result["before_score"] = (
+        before_score
+    )
+
+    result["after_score"] = (
+        after_score
+    )
 
     result["score_change"] = (
 
@@ -628,6 +733,15 @@ def optimize_cv(
         -
         before_score
 
+    )
+
+
+    result["before_evaluation"] = (
+        before_evaluation
+    )
+
+    result["after_evaluation"] = (
+        after_evaluation
     )
 
 

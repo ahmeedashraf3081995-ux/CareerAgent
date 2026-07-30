@@ -9,11 +9,16 @@ from dotenv import load_dotenv
 # Load Environment
 # ============================================================
 
-load_dotenv()
+load_dotenv(
+    os.path.join(
+        os.path.dirname(__file__),
+        ".env"
+    )
+)
 
 
 # ============================================================
-# Configuration
+# OpenRouter Configuration
 # ============================================================
 
 OPENROUTER_API_KEY = os.getenv(
@@ -24,52 +29,31 @@ OPENROUTER_URL = (
     "https://openrouter.ai/api/v1/chat/completions"
 )
 
-
 OPENROUTER_MODEL = os.getenv(
     "OPENROUTER_MODEL",
-    "qwen/qwen3-4b:free"
+    "openrouter/free"
 )
 
-
-# ============================================================
-# Validate API Key
-# ============================================================
 
 if not OPENROUTER_API_KEY:
 
     raise RuntimeError(
         "OPENROUTER_API_KEY is not configured. "
-        "Please add it to your .env file."
+        "Please add it to src/services/.env"
     )
 
 
 # ============================================================
-# Ask AI
+# OpenRouter AI
 # ============================================================
 
 def ask_ollama(
     prompt,
-    system_prompt="",
-    temperature=0.2,
-    json_mode=False
+    system_prompt=None,
+    temperature=0.1,
+    json_mode=False,
+    timeout=120
 ):
-
-    headers = {
-
-        "Authorization":
-            f"Bearer {OPENROUTER_API_KEY}",
-
-        "Content-Type":
-            "application/json",
-
-        "HTTP-Referer":
-            "http://localhost:8501",
-
-        "X-Title":
-            "CareerAgent"
-
-    }
-
 
     messages = []
 
@@ -122,6 +106,23 @@ def ask_ollama(
         }
 
 
+    headers = {
+
+        "Authorization":
+            f"Bearer {OPENROUTER_API_KEY}",
+
+        "Content-Type":
+            "application/json",
+
+        "HTTP-Referer":
+            "https://github.com/ahmeedashraf3081995-ux/CareerAgent",
+
+        "X-Title":
+            "CareerAgent"
+
+    }
+
+
     response = requests.post(
 
         OPENROUTER_URL,
@@ -130,9 +131,22 @@ def ask_ollama(
 
         json=payload,
 
-        timeout=120
+        timeout=timeout
 
     )
+
+
+    if not response.ok:
+
+        print(
+            "OpenRouter error status:",
+            response.status_code
+        )
+
+        print(
+            "OpenRouter response:",
+            response.text
+        )
 
 
     response.raise_for_status()
@@ -141,60 +155,107 @@ def ask_ollama(
     data = response.json()
 
 
-    choices = data.get(
-        "choices",
-        []
-    )
+    # ========================================================
+    # Extract AI Response
+    # ========================================================
 
+    try:
 
-    if not choices:
+        content = data["choices"][0]["message"]["content"]
 
-        raise RuntimeError(
-            "OpenRouter returned no AI response."
-        )
-
-
-    content = choices[0].get(
-        "message",
-        {}
-    ).get(
-        "content",
-        ""
-    )
-
-
-    if not content:
-
-        raise RuntimeError(
-            "OpenRouter returned an empty AI response."
-        )
-
-
-    return content.strip()
-
-
-# ============================================================
-# Extract JSON
-# ============================================================
-
-def extract_json(content):
-
-    if isinstance(
-        content,
-        dict
+    except (
+        KeyError,
+        IndexError,
+        TypeError
     ):
 
-        return content
+        raise RuntimeError(
+            "OpenRouter returned an unexpected response: "
+            + json.dumps(
+                data,
+                indent=2
+            )
+        )
 
 
     if not content:
+
+        raise RuntimeError(
+            "OpenRouter returned an empty response."
+        )
+
+
+    return content
+
+
+# ============================================================
+# JSON Extraction
+# ============================================================
+
+def extract_json(response):
+
+    if not response:
 
         return {}
 
 
-    content = str(
-        content
+    # --------------------------------------------------------
+    # Already a dictionary
+    # --------------------------------------------------------
+
+    if isinstance(
+        response,
+        dict
+    ):
+
+        return response
+
+
+    text = str(
+        response
     ).strip()
+
+
+    # --------------------------------------------------------
+    # Remove Markdown JSON fences
+    # --------------------------------------------------------
+
+    text = re.sub(
+
+        r"^```json\s*",
+
+        "",
+
+        text,
+
+        flags=re.IGNORECASE
+
+    )
+
+
+    text = re.sub(
+
+        r"^```\s*",
+
+        "",
+
+        text
+
+    )
+
+
+    text = re.sub(
+
+        r"\s*```$",
+
+        "",
+
+        text
+
+    )
+
+
+    text = text.strip()
 
 
     # --------------------------------------------------------
@@ -203,42 +264,16 @@ def extract_json(content):
 
     try:
 
-        return json.loads(
-            content
+        result = json.loads(
+            text
         )
 
-    except Exception:
+        if isinstance(
+            result,
+            dict
+        ):
 
-        pass
-
-
-    # --------------------------------------------------------
-    # Remove Markdown Code Fence
-    # --------------------------------------------------------
-
-    cleaned = re.sub(
-
-        r"```(?:json)?",
-
-        "",
-
-        content,
-
-        flags=re.IGNORECASE
-
-    )
-
-    cleaned = cleaned.replace(
-        "```",
-        ""
-    ).strip()
-
-
-    try:
-
-        return json.loads(
-            cleaned
-        )
+            return result
 
     except Exception:
 
@@ -249,31 +284,50 @@ def extract_json(content):
     # Find JSON Object
     # --------------------------------------------------------
 
-    start = cleaned.find(
+    start = text.find(
         "{"
     )
 
-    end = cleaned.rfind(
+    end = text.rfind(
         "}"
     )
 
 
-    if start >= 0 and end > start:
+    if (
+        start != -1
+        and
+        end != -1
+        and
+        end > start
+    ):
 
-        candidate = cleaned[
+        candidate = text[
             start:end + 1
         ]
 
 
         try:
 
-            return json.loads(
+            result = json.loads(
                 candidate
             )
+
+            if isinstance(
+                result,
+                dict
+            ):
+
+                return result
 
         except Exception:
 
             pass
 
 
-    return {}
+    # --------------------------------------------------------
+    # Unable to Parse
+    # --------------------------------------------------------
+
+    raise ValueError(
+        "Could not extract valid JSON from AI response."
+    )
