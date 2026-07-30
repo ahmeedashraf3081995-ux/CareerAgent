@@ -22,7 +22,83 @@ def format_skill(skill):
     if not skill:
         return ""
 
-    return skill.strip()
+    skill = clean_text(skill)
+
+    # Consistent UI capitalization
+    words = skill.split()
+
+    formatted_words = []
+
+    special_cases = {
+        "sap": "SAP",
+        "erp": "ERP",
+        "s&op": "S&OP",
+        "s&op": "S&OP",
+        "ai": "AI",
+        "ml": "ML",
+        "sql": "SQL",
+        "crm": "CRM",
+        "kpi": "KPI",
+        "kpis": "KPIs",
+        "sku": "SKU",
+        "skus": "SKUs",
+        "otb": "OTB",
+        "woc": "WOC",
+        "mape": "MAPE",
+        "bi": "BI",
+        "power bi": "Power BI",
+        "tableau": "Tableau",
+        "python": "Python",
+        "excel": "Excel",
+        "oracle": "Oracle",
+        "nielsen": "Nielsen",
+        "looker studio": "Looker Studio",
+    }
+
+    lower_skill = skill.lower()
+
+    if lower_skill in special_cases:
+        return special_cases[lower_skill]
+
+    for word in words:
+
+        lower_word = word.lower()
+
+        if lower_word in special_cases:
+            formatted_words.append(
+                special_cases[lower_word]
+            )
+
+        else:
+            formatted_words.append(
+                word.capitalize()
+            )
+
+    return " ".join(formatted_words)
+
+
+def format_skills(skills):
+
+    if not skills:
+        return []
+
+    formatted = []
+
+    for skill in skills:
+
+        formatted_skill = format_skill(
+            skill
+        )
+
+        if (
+            formatted_skill
+            and formatted_skill not in formatted
+        ):
+            formatted.append(
+                formatted_skill
+            )
+
+    return formatted
 
 
 # ==================================================
@@ -55,14 +131,18 @@ def create_cv_job_brief(
         )
     )
 
-    matched_skills = job.get(
-        "matched_skills",
-        []
+    matched_skills = format_skills(
+        job.get(
+            "matched_skills",
+            []
+        )
     )
 
-    missing_skills = job.get(
-        "missing_skills",
-        []
+    missing_skills = format_skills(
+        job.get(
+            "missing_skills",
+            []
+        )
     )
 
     score = job.get(
@@ -72,7 +152,7 @@ def create_cv_job_brief(
 
 
     # ------------------------------------------
-    # Basic job information
+    # No Description Available
     # ------------------------------------------
 
     if not description:
@@ -103,25 +183,7 @@ def create_cv_job_brief(
 
 
     # ------------------------------------------
-    # Matched skills
-    # ------------------------------------------
-
-    matched = [
-        format_skill(skill)
-        for skill in matched_skills
-        if skill
-    ]
-
-
-    missing = [
-        format_skill(skill)
-        for skill in missing_skills
-        if skill
-    ]
-
-
-    # ------------------------------------------
-    # Build brief
+    # Build Brief
     # ------------------------------------------
 
     parts = []
@@ -130,23 +192,28 @@ def create_cv_job_brief(
     if title and company:
 
         parts.append(
-            f"This {title} role at {company} focuses on "
-            f"responsibilities and requirements outlined in "
-            f"the job description."
+            f"This {title} role at {company} is focused on "
+            f"the responsibilities and requirements outlined "
+            f"in the job description."
         )
 
     elif title:
 
         parts.append(
-            f"This {title} role focuses on the responsibilities "
-            f"and requirements outlined in the job description."
+            f"This {title} role is focused on the "
+            f"responsibilities and requirements outlined "
+            f"in the job description."
         )
 
 
-    if matched:
+    # ------------------------------------------
+    # Matching Skills
+    # ------------------------------------------
+
+    if matched_skills:
 
         matched_text = ", ".join(
-            matched[:5]
+            matched_skills[:5]
         )
 
         parts.append(
@@ -155,37 +222,47 @@ def create_cv_job_brief(
         )
 
 
-    if missing:
+    # ------------------------------------------
+    # Missing Skills
+    # ------------------------------------------
+
+    if missing_skills:
 
         missing_text = ", ".join(
-            missing[:4]
+            missing_skills[:4]
         )
 
         parts.append(
-            f"The main areas to strengthen for this role are "
-            f"{missing_text}."
+            f"The main areas to strengthen for this role "
+            f"are {missing_text}."
         )
 
+
+    # ------------------------------------------
+    # Overall Assessment
+    # ------------------------------------------
 
     if score >= 85:
 
         parts.append(
             "Overall, this appears to be a strong opportunity "
-            "based on your current CV."
+            "based on the current alignment between your CV "
+            "and the role."
         )
 
     elif score >= 70:
 
         parts.append(
             "Overall, this appears to be a good opportunity "
-            "with some areas that could be strengthened."
+            "with a few areas that could be strengthened."
         )
 
     else:
 
         parts.append(
             "Overall, the role has some relevant elements, "
-            "but your CV may need stronger alignment before applying."
+            "but your CV may need stronger alignment before "
+            "applying."
         )
 
 
@@ -204,15 +281,19 @@ def create_cv_suggestions(
     suggestions = []
 
 
-    missing_skills = job.get(
-        "missing_skills",
-        []
+    missing_skills = format_skills(
+        job.get(
+            "missing_skills",
+            []
+        )
     )
 
 
-    matched_skills = job.get(
-        "matched_skills",
-        []
+    matched_skills = format_skills(
+        job.get(
+            "matched_skills",
+            []
+        )
     )
 
 
@@ -241,7 +322,8 @@ def create_cv_suggestions(
             suggestions.append(
                 f"If you have relevant experience with "
                 f"{skill}, consider making it more visible "
-                f"in your CV."
+                f"in your CV by adding a specific achievement "
+                f"or responsibility."
             )
 
 
@@ -257,16 +339,18 @@ def create_cv_suggestions(
 
         suggestions.append(
             f"Emphasize your experience with "
-            f"{matched_text}, as these areas already align "
-            f"well with the role."
+            f"{matched_text}, particularly where you can "
+            f"show measurable business impact."
         )
 
 
     # ------------------------------------------
-    # Description-based suggestions
+    # Description-Based Suggestions
     # ------------------------------------------
 
-    description_lower = description.lower()
+    description_lower = (
+        description.lower()
+    )
 
 
     keyword_groups = [
@@ -274,8 +358,8 @@ def create_cv_suggestions(
         (
             "forecasting",
             "Highlight specific forecasting methods, "
-            "forecast accuracy improvements, or forecasting "
-            "responsibilities."
+            "forecast accuracy improvements, and measurable "
+            "forecasting results."
         ),
 
         (
@@ -287,14 +371,16 @@ def create_cv_suggestions(
 
         (
             "s&op",
-            "If you have S&OP experience, make your involvement "
-            "and cross-functional responsibilities explicit."
+            "If you have S&OP experience, clearly show your "
+            "role in the process and your cross-functional "
+            "involvement."
         ),
 
         (
             "sales and operations planning",
             "If applicable, clearly mention your Sales and "
-            "Operations Planning experience."
+            "Operations Planning experience and the business "
+            "impact you delivered."
         ),
 
         (
@@ -305,8 +391,8 @@ def create_cv_suggestions(
 
         (
             "tableau",
-            "Highlight relevant Tableau reporting or dashboard "
-            "development experience."
+            "Highlight relevant Tableau reporting, dashboard "
+            "development, and business insights."
         ),
 
         (
@@ -318,19 +404,31 @@ def create_cv_suggestions(
         (
             "excel",
             "Highlight advanced Excel capabilities and quantify "
-            "how they improved planning or reporting."
+            "how they improved planning, analysis, or reporting."
         ),
 
         (
             "automation",
             "If applicable, highlight automation projects and "
-            "the time or effort saved."
+            "quantify the time, effort, or error reduction achieved."
         ),
 
         (
             "stakeholder",
             "Emphasize cross-functional stakeholder management "
-            "and collaboration."
+            "and collaboration with measurable outcomes where possible."
+        ),
+
+        (
+            "leadership",
+            "Highlight examples where you led initiatives, "
+            "projects, or cross-functional activities."
+        ),
+
+        (
+            "analytics",
+            "Highlight analytical projects where your insights "
+            "directly supported business or planning decisions."
         )
 
     ]
@@ -340,7 +438,6 @@ def create_cv_suggestions(
 
         if keyword in description_lower:
 
-            # Avoid excessive suggestions
             if suggestion not in suggestions:
 
                 suggestions.append(
@@ -355,9 +452,9 @@ def create_cv_suggestions(
     if score < 70:
 
         suggestions.append(
-            "Review the role requirements carefully and "
-            "prioritize the most relevant experience in your "
-            "CV before applying."
+            "Review the key requirements of the role and "
+            "prioritize the most relevant experience and "
+            "achievements in your CV before applying."
         )
 
 
@@ -369,8 +466,21 @@ def create_cv_suggestions(
 
         suggestions.append(
             "Your CV already shows strong alignment with this "
-            "role, so focus on making your strongest relevant "
-            "achievements easy to find."
+            "role. Focus on making your strongest relevant "
+            "achievements easy to identify."
+        )
+
+
+    # ------------------------------------------
+    # Medium Score
+    # ------------------------------------------
+
+    elif score >= 70:
+
+        suggestions.append(
+            "Consider tailoring the wording of your strongest "
+            "experience to reflect the terminology used in "
+            "the job description."
         )
 
 
@@ -399,11 +509,39 @@ def analyze_job_against_cv(
     job
 ):
 
+    # ------------------------------------------
+    # Format Skills For UI
+    # ------------------------------------------
+
+    job["matched_skills"] = format_skills(
+        job.get(
+            "matched_skills",
+            []
+        )
+    )
+
+
+    job["missing_skills"] = format_skills(
+        job.get(
+            "missing_skills",
+            []
+        )
+    )
+
+
+    # ------------------------------------------
+    # Generate CV Job Brief
+    # ------------------------------------------
+
     job["cv_job_brief"] = create_cv_job_brief(
         cv_text,
         job
     )
 
+
+    # ------------------------------------------
+    # Generate CV Suggestions
+    # ------------------------------------------
 
     job["cv_suggestions"] = create_cv_suggestions(
         cv_text,

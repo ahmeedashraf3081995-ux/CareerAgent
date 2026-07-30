@@ -299,12 +299,14 @@ def search_jobs(parameters):
     # Load Job Descriptions
     # ==================================================
 
+    # IMPORTANT:
+    # No 30-job limit anymore.
+    #
+    # Every job remaining after the relevance filter
+    # will be sent to the description loader.
+
     results = load_descriptions(
-
-        results,
-
-        limit=30
-
+        results
     )
 
 

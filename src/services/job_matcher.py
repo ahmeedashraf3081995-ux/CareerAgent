@@ -56,6 +56,136 @@ SKILLS = [
 ]
 
 
+# ==================================================
+# Skill Formatting
+# ==================================================
+
+def format_skill(skill):
+
+    if not skill:
+        return ""
+
+
+    skill = str(
+        skill
+    ).strip()
+
+
+    special_cases = {
+
+        "sap": "SAP",
+
+        "erp": "ERP",
+
+        "s&op": "S&OP",
+
+        "ai": "AI",
+
+        "ml": "ML",
+
+        "sql": "SQL",
+
+        "crm": "CRM",
+
+        "kpi": "KPI",
+
+        "kpis": "KPIs",
+
+        "sku": "SKU",
+
+        "skus": "SKUs",
+
+        "otb": "OTB",
+
+        "woc": "WOC",
+
+        "mape": "MAPE",
+
+        "bi": "BI",
+
+        "power bi": "Power BI",
+
+        "tableau": "Tableau",
+
+        "python": "Python",
+
+        "excel": "Excel",
+
+        "oracle": "Oracle",
+
+        "nielsen": "Nielsen",
+
+        "looker studio": "Looker Studio"
+
+    }
+
+
+    lower_skill = skill.lower()
+
+
+    if lower_skill in special_cases:
+
+        return special_cases[
+            lower_skill
+        ]
+
+
+    words = skill.split()
+
+
+    formatted = []
+
+
+    for word in words:
+
+        lower_word = word.lower()
+
+
+        if lower_word in special_cases:
+
+            formatted.append(
+                special_cases[
+                    lower_word
+                ]
+            )
+
+        else:
+
+            formatted.append(
+                word.capitalize()
+            )
+
+
+    return " ".join(
+        formatted
+    )
+
+
+# ==================================================
+# Format Skills
+# ==================================================
+
+def format_skills(skills):
+
+    formatted = []
+
+
+    for skill in skills:
+
+        value = format_skill(
+            skill
+        )
+
+
+        if value and value not in formatted:
+
+            formatted.append(
+                value
+            )
+
+
+    return formatted
+
 
 # ==================================================
 # Normalize Text
@@ -70,9 +200,8 @@ def normalize(text):
     return re.sub(
         r"[^a-zA-Z0-9&\s]",
         " ",
-        text.lower()
+        str(text).lower()
     )
-
 
 
 # ==================================================
@@ -81,7 +210,9 @@ def normalize(text):
 
 def extract_skills(text):
 
-    text = normalize(text)
+    text = normalize(
+        text
+    )
 
     found = []
 
@@ -90,11 +221,14 @@ def extract_skills(text):
 
         if skill in text:
 
-            found.append(skill)
+            found.append(
+                skill
+            )
 
 
-    return list(set(found))
-
+    return list(
+        set(found)
+    )
 
 
 # ==================================================
@@ -103,36 +237,134 @@ def extract_skills(text):
 
 def extract_years(text):
 
-    text = normalize(text)
+    text = normalize(
+        text
+    )
 
 
     matches = re.findall(
+
         r"(\d+)\+?\s*(?:years|year)",
+
         text
+
     )
 
 
     if matches:
 
         return max(
+
             int(x)
+
             for x in matches
+
         )
 
 
     return 0
 
 
+# ==================================================
+# Experience Score
+# ==================================================
+
+def calculate_experience_score(
+    cv_years,
+    required_years
+):
+
+    # ------------------------------------------
+    # No CV Experience Found
+    # ------------------------------------------
+
+    if cv_years <= 0:
+
+        return 0
+
+
+    # ------------------------------------------
+    # Job Does Not Specify Experience
+    # ------------------------------------------
+
+    if required_years <= 0:
+
+        return 85
+
+
+    # ------------------------------------------
+    # CV Meets Or Exceeds Requirement
+    # ------------------------------------------
+
+    if cv_years >= required_years:
+
+        # Extra experience is positive,
+        # but we don't reward it excessively.
+
+        return 100
+
+
+    # ------------------------------------------
+    # Calculate Experience Ratio
+    # ------------------------------------------
+
+    ratio = (
+        cv_years
+        /
+        required_years
+    )
+
+
+    # ------------------------------------------
+    # Slightly Below Requirement
+    # ------------------------------------------
+
+    if ratio >= 0.80:
+
+        return 90
+
+
+    # ------------------------------------------
+    # Moderately Below Requirement
+    # ------------------------------------------
+
+    if ratio >= 0.60:
+
+        return 75
+
+
+    # ------------------------------------------
+    # Significantly Below Requirement
+    # ------------------------------------------
+
+    if ratio >= 0.40:
+
+        return 55
+
+
+    # ------------------------------------------
+    # Very Significant Gap
+    # ------------------------------------------
+
+    return 35
+
 
 # ==================================================
 # Title Matching
 # ==================================================
 
-def calculate_title_score(cv_text, job_title):
+def calculate_title_score(
+    cv_text,
+    job_title
+):
 
-    cv = normalize(cv_text)
+    cv = normalize(
+        cv_text
+    )
 
-    title = normalize(job_title)
+    title = normalize(
+        job_title
+    )
 
 
     score = 0
@@ -141,14 +373,23 @@ def calculate_title_score(cv_text, job_title):
     important_words = [
 
         "planner",
+
         "planning",
+
         "demand",
+
         "supply",
+
         "inventory",
+
         "forecast",
+
         "s&op",
+
         "merchandise",
+
         "analyst",
+
         "manager"
 
     ]
@@ -161,19 +402,28 @@ def calculate_title_score(cv_text, job_title):
             score += 15
 
 
-    return min(score, 100)
-
+    return min(
+        score,
+        100
+    )
 
 
 # ==================================================
 # Seniority Matching
 # ==================================================
 
-def seniority_score(cv_text, job_title):
+def seniority_score(
+    cv_text,
+    job_title
+):
 
-    cv = normalize(cv_text)
+    cv = normalize(
+        cv_text
+    )
 
-    title = normalize(job_title)
+    title = normalize(
+        job_title
+    )
 
 
     score = 50
@@ -182,9 +432,13 @@ def seniority_score(cv_text, job_title):
     senior_words = [
 
         "senior",
+
         "lead",
+
         "manager",
+
         "head",
+
         "director"
 
     ]
@@ -197,27 +451,40 @@ def seniority_score(cv_text, job_title):
             score += 10
 
 
-    return min(score, 100)
-
+    return min(
+        score,
+        100
+    )
 
 
 # ==================================================
 # Industry Match
 # ==================================================
 
-def industry_score(cv_text, job_text):
+def industry_score(
+    cv_text,
+    job_text
+):
 
-    cv = normalize(cv_text)
+    cv = normalize(
+        cv_text
+    )
 
-    job = normalize(job_text)
+    job = normalize(
+        job_text
+    )
 
 
     industries = [
 
         "retail",
+
         "fmcg",
+
         "consumer goods",
+
         "e commerce",
+
         "electronics"
 
     ]
@@ -233,12 +500,14 @@ def industry_score(cv_text, job_text):
     return 50
 
 
-
 # ==================================================
 # Missing Skills
 # ==================================================
 
-def find_missing_skills(job_skills, cv_skills):
+def find_missing_skills(
+    job_skills,
+    cv_skills
+):
 
     cv_skills_clean = set(
 
@@ -254,79 +523,148 @@ def find_missing_skills(job_skills, cv_skills):
 
     for skill in job_skills:
 
-        skill_clean = skill.lower().strip()
+        skill_clean = (
+            skill.lower().strip()
+        )
 
 
         if skill_clean not in cv_skills_clean:
 
-            missing.append(skill)
+            formatted = format_skill(
+                skill
+            )
+
+
+            if formatted:
+
+                missing.append(
+                    formatted
+                )
 
 
     return missing[:10]
-
 
 
 # ==================================================
 # Explanation
 # ==================================================
 
-def create_reason(matched, score):
+def create_reason(
+    matched,
+    score,
+    cv_years,
+    job_years
+):
+
+    formatted_matched = format_skills(
+        matched
+    )
 
 
     if score >= 85:
 
-        return (
-
-            "Excellent match. Your experience aligns with this role through: "
-
-            +
-
-            ", ".join(matched[:6])
-
+        reason = (
+            "Excellent match. Your experience aligns "
+            "well with this role"
         )
 
 
     elif score >= 70:
 
-        return (
-
-            "Good match. Relevant experience found in: "
-
-            +
-
-            ", ".join(matched[:6])
-
+        reason = (
+            "Good match. Your background has several "
+            "relevant areas for this role"
         )
 
 
     else:
 
-        return (
-
-            "Partial match. Consider improving your CV keywords and experience alignment."
-
+        reason = (
+            "Partial match. Some relevant experience "
+            "was identified, but there are areas that "
+            "could be strengthened"
         )
 
+
+    # ------------------------------------------
+    # Skills
+    # ------------------------------------------
+
+    if formatted_matched:
+
+        reason += (
+            " through: "
+            +
+            ", ".join(
+                formatted_matched[:6]
+            )
+        )
+
+
+    # ------------------------------------------
+    # Experience
+    # ------------------------------------------
+
+    if job_years:
+
+        if cv_years >= job_years:
+
+            reason += (
+                f". Your CV shows approximately "
+                f"{cv_years} years of experience, "
+                f"meeting the {job_years}-year requirement"
+            )
+
+        elif cv_years:
+
+            reason += (
+                f". Your CV shows approximately "
+                f"{cv_years} years of experience "
+                f"versus the {job_years}-year requirement"
+            )
+
+
+    return reason + "."
 
 
 # ==================================================
 # Main Matching Function
 # ==================================================
 
-def match_jobs(cv_text, jobs):
+def match_jobs(
+    cv_text,
+    jobs
+):
+
+    # ==================================================
+    # CV Analysis
+    # ==================================================
+
+    cv_skills = extract_skills(
+        cv_text
+    )
 
 
-    cv_skills = extract_skills(cv_text)
+    cv_years = extract_years(
+        cv_text
+    )
 
-    cv_years = extract_years(cv_text)
+
+    print(
+        "CV experience detected:",
+        cv_years,
+        "years"
+    )
 
 
     results = []
 
 
+    # ==================================================
+    # Match Every Job
+    # ==================================================
 
     for job in jobs:
-
 
         title = job.get(
             "job_title",
@@ -355,10 +693,18 @@ def match_jobs(cv_text, jobs):
         )
 
 
+        # ------------------------------------------
+        # Job Skills
+        # ------------------------------------------
 
-        job_skills = extract_skills(job_text)
+        job_skills = extract_skills(
+            job_text
+        )
 
 
+        # ------------------------------------------
+        # Matching Skills
+        # ------------------------------------------
 
         matched_skills = list(
 
@@ -371,8 +717,14 @@ def match_jobs(cv_text, jobs):
         )
 
 
+        matched_skills = format_skills(
+            matched_skills
+        )
 
+
+        # ------------------------------------------
         # Skill Score
+        # ------------------------------------------
 
         skill_score = 0
 
@@ -398,6 +750,9 @@ def match_jobs(cv_text, jobs):
             )
 
 
+        # ------------------------------------------
+        # Title Score
+        # ------------------------------------------
 
         title_score = calculate_title_score(
 
@@ -408,6 +763,10 @@ def match_jobs(cv_text, jobs):
         )
 
 
+        # ------------------------------------------
+        # Seniority Score
+        # ------------------------------------------
+
         senior_score = seniority_score(
 
             cv_text,
@@ -416,6 +775,10 @@ def match_jobs(cv_text, jobs):
 
         )
 
+
+        # ------------------------------------------
+        # Industry Score
+        # ------------------------------------------
 
         industry = industry_score(
 
@@ -426,33 +789,40 @@ def match_jobs(cv_text, jobs):
         )
 
 
+        # ------------------------------------------
+        # Experience
+        # ------------------------------------------
 
-        job_years = extract_years(job_text)
-
-
-        experience_score = 50
-
-
-
-        if job_years and cv_years:
+        job_years = extract_years(
+            job_text
+        )
 
 
-            if cv_years >= job_years:
+        experience_score = calculate_experience_score(
 
-                experience_score = 100
+            cv_years,
 
-            else:
+            job_years
 
-                experience_score = 70
-
-
-        elif cv_years:
-
-            experience_score = 80
+        )
 
 
+        print(
 
+            f"{title} | "
+
+            f"CV Years: {cv_years} | "
+
+            f"Required: {job_years} | "
+
+            f"Experience Score: {experience_score}"
+
+        )
+
+
+        # ==================================================
         # Final Score
+        # ==================================================
 
         final_score = round(
 
@@ -460,11 +830,11 @@ def match_jobs(cv_text, jobs):
 
             +
 
-            (title_score * 0.25)
+            (title_score * 0.20)
 
             +
 
-            (senior_score * 0.15)
+            (senior_score * 0.10)
 
             +
 
@@ -472,7 +842,7 @@ def match_jobs(cv_text, jobs):
 
             +
 
-            (experience_score * 0.15)
+            (experience_score * 0.25)
 
         )
 
@@ -486,16 +856,11 @@ def match_jobs(cv_text, jobs):
         )
 
 
+        # ==================================================
+        # Missing Skills
+        # ==================================================
 
-        # Save Results
-
-        job["match_score"] = final_score
-
-
-        job["matched_skills"] = matched_skills
-
-
-        job["missing_skills"] = find_missing_skills(
+        missing_skills = find_missing_skills(
 
             job_skills,
 
@@ -504,42 +869,81 @@ def match_jobs(cv_text, jobs):
         )
 
 
+        # ==================================================
+        # Save Results
+        # ==================================================
+
+        job["match_score"] = final_score
+
+
+        job["matched_skills"] = matched_skills
+
+
+        job["missing_skills"] = missing_skills
+
+
+        job["cv_years"] = cv_years
+
+
+        job["required_years"] = job_years
+
+
+        job["experience_score"] = experience_score
+
+
         job["match_reason"] = create_reason(
 
             matched_skills,
 
-            final_score
+            final_score,
+
+            cv_years,
+
+            job_years
 
         )
 
 
+        # ==================================================
+        # Match Level
+        # ==================================================
 
         if final_score >= 85:
 
-            job["match_level"] = "🔥 Excellent Match"
+            job["match_level"] = (
+                "🔥 Excellent Match"
+            )
 
 
         elif final_score >= 70:
 
-            job["match_level"] = "✅ Good Match"
+            job["match_level"] = (
+                "✅ Good Match"
+            )
 
 
         elif final_score >= 50:
 
-            job["match_level"] = "⚠️ Partial Match"
+            job["match_level"] = (
+                "⚠️ Partial Match"
+            )
 
 
         else:
 
-            job["match_level"] = "❌ Weak Match"
+            job["match_level"] = (
+                "❌ Weak Match"
+            )
 
 
+        results.append(
+            job
+        )
 
-        results.append(job)
 
-
-
-    # Highest match first
+    # ==================================================
+    # Highest Match First
+    # ==================================================
 
     results.sort(
 

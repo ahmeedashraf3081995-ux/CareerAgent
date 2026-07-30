@@ -2,50 +2,28 @@ from src.scrapers.linkedin_scraper import extract_job_details
 import time
 
 
-def load_descriptions(
-    jobs,
-    limit=30
-):
+# ==================================================
+# Load Job Descriptions
+# ==================================================
+
+def load_descriptions(jobs):
 
     """
-    Load real LinkedIn job descriptions.
+    Load LinkedIn descriptions for all jobs.
 
-    Only the first `limit` jobs are opened
-    to protect Streamlit Cloud resources.
+    Every job returned to the matching stage will have
+    a description field, even if LinkedIn fails to provide
+    one.
     """
+
+    total = len(jobs)
 
     loaded = 0
 
-
-    for job in jobs:
-
-        # --------------------------------------
-        # Stop after limit
-        # --------------------------------------
-
-        if loaded >= limit:
-
-            break
+    failed = 0
 
 
-        # --------------------------------------
-        # Skip if description already exists
-        # --------------------------------------
-
-        existing_description = job.get(
-            "description",
-            ""
-        )
-
-
-        if existing_description:
-
-            continue
-
-
-        # --------------------------------------
-        # Get URL
-        # --------------------------------------
+    for index, job in enumerate(jobs, start=1):
 
         url = job.get(
             "url",
@@ -53,9 +31,15 @@ def load_descriptions(
         )
 
 
+        # ------------------------------------------
+        # Ensure Description Field Exists
+        # ------------------------------------------
+
         if not url:
 
             job["description"] = ""
+
+            failed += 1
 
             continue
 
@@ -63,7 +47,7 @@ def load_descriptions(
         try:
 
             print(
-                f"Loading description {loaded + 1}/{limit}"
+                f"Loading description {index}/{total}"
             )
 
 
@@ -72,18 +56,26 @@ def load_descriptions(
             )
 
 
-            job["description"] = description
-
-
             if description:
+
+                job["description"] = description
 
                 loaded += 1
 
+            else:
 
-            # Small delay to avoid
-            # hammering LinkedIn
+                job["description"] = ""
 
-            time.sleep(0.3)
+                failed += 1
+
+
+            # --------------------------------------
+            # Small Delay Between Requests
+            # --------------------------------------
+
+            time.sleep(
+                0.5
+            )
 
 
         except Exception as e:
@@ -96,10 +88,12 @@ def load_descriptions(
 
             job["description"] = ""
 
+            failed += 1
 
-    # --------------------------------------
-    # Ensure every job has description field
-    # --------------------------------------
+
+    # ==================================================
+    # Final Safety Check
+    # ==================================================
 
     for job in jobs:
 
@@ -109,7 +103,20 @@ def load_descriptions(
 
 
     print(
-        f"Descriptions successfully loaded: {loaded}"
+        "Descriptions loaded:",
+        loaded
+    )
+
+
+    print(
+        "Descriptions unavailable:",
+        failed
+    )
+
+
+    print(
+        "Total jobs processed:",
+        total
     )
 
 
