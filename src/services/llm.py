@@ -18,37 +18,92 @@ load_dotenv(
 
 
 # ============================================================
-# OpenRouter Configuration
+# API Keys
 # ============================================================
 
 OPENROUTER_API_KEY = os.getenv(
     "OPENROUTER_API_KEY"
 )
 
+GROQ_API_KEY = os.getenv(
+    "GROQ_API_KEY"
+)
+
+GEMINI_API_KEY = os.getenv(
+    "GEMINI_API_KEY"
+)
+
+
+# ============================================================
+# Models
+# ============================================================
+
+OPENROUTER_MODEL = os.getenv(
+    "OPENROUTER_MODEL",
+    "openrouter/free"
+)
+
+# Groq model
+GROQ_MODEL = os.getenv(
+    "GROQ_MODEL",
+    "openai/gpt-oss-120b"
+)
+
+# Gemini model
+GEMINI_MODEL = os.getenv(
+    "GEMINI_MODEL",
+    "gemini-2.5-flash"
+)
+
+
+# ============================================================
+# API URLs
+# ============================================================
+
 OPENROUTER_URL = (
     "https://openrouter.ai/api/v1/chat/completions"
 )
 
-# ============================================================
-# FREE MODEL ROUTER
-# ============================================================
+GROQ_URL = (
+    "https://api.groq.com/openai/v1/chat/completions"
+)
 
-OPENROUTER_MODEL = "openrouter/free"
-
-
-if not OPENROUTER_API_KEY:
-
-    raise RuntimeError(
-        "OPENROUTER_API_KEY is not configured. "
-        "Please add it to src/services/.env"
-    )
+GEMINI_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/models/"
+)
 
 
 # ============================================================
-# OpenRouter AI
+# Build Messages
 # ============================================================
 
-def ask_ollama(
+def build_messages(
+    prompt,
+    system_prompt=None
+):
+
+    messages = []
+
+    if system_prompt:
+
+        messages.append({
+            "role": "system",
+            "content": system_prompt
+        })
+
+    messages.append({
+        "role": "user",
+        "content": prompt
+    })
+
+    return messages
+
+
+# ============================================================
+# OpenRouter
+# ============================================================
+
+def call_openrouter(
     prompt,
     system_prompt=None,
     temperature=0.1,
@@ -56,44 +111,12 @@ def ask_ollama(
     timeout=120
 ):
 
-    messages = []
+    if not OPENROUTER_API_KEY:
 
+        raise RuntimeError(
+            "OPENROUTER_API_KEY not configured."
+        )
 
-    # ========================================================
-    # System Prompt
-    # ========================================================
-
-    if system_prompt:
-
-        messages.append({
-
-            "role":
-                "system",
-
-            "content":
-                system_prompt
-
-        })
-
-
-    # ========================================================
-    # User Prompt
-    # ========================================================
-
-    messages.append({
-
-        "role":
-            "user",
-
-        "content":
-            prompt
-
-    })
-
-
-    # ========================================================
-    # Request Payload
-    # ========================================================
 
     payload = {
 
@@ -101,7 +124,10 @@ def ask_ollama(
             OPENROUTER_MODEL,
 
         "messages":
-            messages,
+            build_messages(
+                prompt,
+                system_prompt
+            ),
 
         "temperature":
             temperature
@@ -109,23 +135,12 @@ def ask_ollama(
     }
 
 
-    # ========================================================
-    # JSON Mode
-    # ========================================================
-
     if json_mode:
 
         payload["response_format"] = {
-
-            "type":
-                "json_object"
-
+            "type": "json_object"
         }
 
-
-    # ========================================================
-    # Headers
-    # ========================================================
 
     headers = {
 
@@ -144,10 +159,6 @@ def ask_ollama(
     }
 
 
-    # ========================================================
-    # Send Request
-    # ========================================================
-
     response = requests.post(
 
         OPENROUTER_URL,
@@ -161,94 +172,363 @@ def ask_ollama(
     )
 
 
-    # ========================================================
-    # Error Handling
-    # ========================================================
-
     if not response.ok:
 
-        print(
-            "OpenRouter error status:",
-            response.status_code
+        raise RuntimeError(
+            f"OpenRouter {response.status_code}: "
+            f"{response.text[:500]}"
         )
 
-        print(
-            "OpenRouter response:",
-            response.text
-        )
-
-
-    response.raise_for_status()
-
-
-    # ========================================================
-    # Parse Response
-    # ========================================================
 
     data = response.json()
 
 
-    # ========================================================
-    # Extract AI Response
-    # ========================================================
+    return data[
+        "choices"
+    ][
+        0
+    ][
+        "message"
+    ][
+        "content"
+    ]
 
-    try:
 
-        content = (
-            data[
-                "choices"
-            ][
-                0
-            ][
-                "message"
-            ][
-                "content"
-            ]
-        )
+# ============================================================
+# Groq
+# ============================================================
 
-    except (
-        KeyError,
-        IndexError,
-        TypeError
-    ):
+def call_groq(
+    prompt,
+    system_prompt=None,
+    temperature=0.1,
+    json_mode=False,
+    timeout=120
+):
+
+    if not GROQ_API_KEY:
 
         raise RuntimeError(
+            "GROQ_API_KEY not configured."
+        )
 
-            "OpenRouter returned an unexpected "
-            "response: "
 
-            +
+    payload = {
 
-            json.dumps(
-                data,
-                indent=2
+        "model":
+            GROQ_MODEL,
+
+        "messages":
+            build_messages(
+                prompt,
+                system_prompt
+            ),
+
+        "temperature":
+            temperature
+
+    }
+
+
+    if json_mode:
+
+        payload["response_format"] = {
+            "type": "json_object"
+        }
+
+
+    headers = {
+
+        "Authorization":
+            f"Bearer {GROQ_API_KEY}",
+
+        "Content-Type":
+            "application/json"
+
+    }
+
+
+    response = requests.post(
+
+        GROQ_URL,
+
+        headers=headers,
+
+        json=payload,
+
+        timeout=timeout
+
+    )
+
+
+    if not response.ok:
+
+        raise RuntimeError(
+            f"Groq {response.status_code}: "
+            f"{response.text[:500]}"
+        )
+
+
+    data = response.json()
+
+
+    return data[
+        "choices"
+    ][
+        0
+    ][
+        "message"
+    ][
+        "content"
+    ]
+
+
+# ============================================================
+# Gemini
+# ============================================================
+
+def call_gemini(
+    prompt,
+    system_prompt=None,
+    temperature=0.1,
+    json_mode=False,
+    timeout=120
+):
+
+    if not GEMINI_API_KEY:
+
+        raise RuntimeError(
+            "GEMINI_API_KEY not configured."
+        )
+
+
+    url = (
+        GEMINI_URL
+        +
+        GEMINI_MODEL
+        +
+        ":generateContent"
+    )
+
+
+    contents = []
+
+
+    if system_prompt:
+
+        contents.append({
+
+            "role":
+                "user",
+
+            "parts": [{
+
+                "text":
+                    system_prompt
+
+            }]
+
+        })
+
+
+    contents.append({
+
+        "role":
+            "user",
+
+        "parts": [{
+
+            "text":
+                prompt
+
+        }]
+
+    })
+
+
+    payload = {
+
+        "contents":
+            contents,
+
+        "generationConfig": {
+
+            "temperature":
+                temperature
+
+        }
+
+    }
+
+
+    if json_mode:
+
+        payload[
+            "generationConfig"
+        ][
+            "responseMimeType"
+        ] = "application/json"
+
+
+    headers = {
+
+        "Content-Type":
+            "application/json"
+
+    }
+
+
+    response = requests.post(
+
+        url,
+
+        params={
+            "key":
+                GEMINI_API_KEY
+        },
+
+        headers=headers,
+
+        json=payload,
+
+        timeout=timeout
+
+    )
+
+
+    if not response.ok:
+
+        raise RuntimeError(
+            f"Gemini {response.status_code}: "
+            f"{response.text[:500]}"
+        )
+
+
+    data = response.json()
+
+
+    return data[
+        "candidates"
+    ][
+        0
+    ][
+        "content"
+    ][
+        "parts"
+    ][
+        0
+    ][
+        "text"
+    ]
+
+
+# ============================================================
+# AI Router
+# ============================================================
+
+def ask_ollama(
+    prompt,
+    system_prompt=None,
+    temperature=0.1,
+    json_mode=False,
+    timeout=120
+):
+
+    providers = [
+
+        (
+            "OpenRouter",
+            call_openrouter
+        ),
+
+        (
+            "Groq",
+            call_groq
+        ),
+
+        (
+            "Gemini",
+            call_gemini
+        )
+
+    ]
+
+
+    errors = []
+
+
+    for provider_name, provider_function in providers:
+
+        try:
+
+            print(
+                f"AI provider: {provider_name}"
             )
 
+
+            result = provider_function(
+
+                prompt,
+
+                system_prompt=system_prompt,
+
+                temperature=temperature,
+
+                json_mode=json_mode,
+
+                timeout=timeout
+
+            )
+
+
+            if result:
+
+                print(
+                    f"AI success: {provider_name}"
+                )
+
+                return result
+
+
+        except Exception as e:
+
+            error_message = str(e)
+
+            print(
+                f"{provider_name} failed:"
+            )
+
+            print(
+                error_message[:500]
+            )
+
+
+            errors.append({
+
+                "provider":
+                    provider_name,
+
+                "error":
+                    error_message
+
+            })
+
+
+            print(
+                "Trying next provider..."
+            )
+
+
+    raise RuntimeError(
+
+        "All AI providers failed.\n"
+        +
+        json.dumps(
+            errors,
+            indent=2
         )
 
-
-    if not content:
-
-        raise RuntimeError(
-            "OpenRouter returned an empty response."
-        )
-
-
-    # ========================================================
-    # Display Actual Model Used
-    # ========================================================
-
-    model_used = data.get(
-        "model",
-        "unknown"
     )
-
-    print(
-        f"OpenRouter free model used: {model_used}"
-    )
-
-
-    return content
 
 
 # ============================================================
@@ -261,10 +541,6 @@ def extract_json(response):
 
         return {}
 
-
-    # ========================================================
-    # Already Dictionary
-    # ========================================================
 
     if isinstance(
         response,
@@ -279,9 +555,7 @@ def extract_json(response):
     ).strip()
 
 
-    # ========================================================
-    # Remove JSON Markdown Fences
-    # ========================================================
+    # Remove markdown fences
 
     text = re.sub(
 
@@ -321,9 +595,7 @@ def extract_json(response):
     text = text.strip()
 
 
-    # ========================================================
     # Direct JSON
-    # ========================================================
 
     try:
 
@@ -343,9 +615,7 @@ def extract_json(response):
         pass
 
 
-    # ========================================================
-    # Find JSON Object
-    # ========================================================
+    # Find JSON object
 
     start = text.find(
         "{"
@@ -357,11 +627,17 @@ def extract_json(response):
 
 
     if (
+
         start != -1
+
         and
+
         end != -1
+
         and
+
         end > start
+
     ):
 
         candidate = text[
@@ -387,10 +663,7 @@ def extract_json(response):
             pass
 
 
-    # ========================================================
-    # Unable To Parse
-    # ========================================================
-
     raise ValueError(
-        "Could not extract valid JSON from AI response."
+        "Could not extract valid JSON "
+        "from AI response."
     )
