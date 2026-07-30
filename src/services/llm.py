@@ -85,13 +85,23 @@ def build_messages(
     if system_prompt:
 
         messages.append({
-            "role": "system",
-            "content": system_prompt
+
+            "role":
+                "system",
+
+            "content":
+                system_prompt
+
         })
 
     messages.append({
-        "role": "user",
-        "content": prompt
+
+        "role":
+            "user",
+
+        "content":
+            prompt
+
     })
 
     return messages
@@ -134,7 +144,10 @@ def call_openrouter(
     if json_mode:
 
         payload["response_format"] = {
-            "type": "json_object"
+
+            "type":
+                "json_object"
+
         }
 
     headers = {
@@ -168,21 +181,37 @@ def call_openrouter(
     if not response.ok:
 
         raise RuntimeError(
+
             f"OpenRouter {response.status_code}: "
-            f"{response.text[:500]}"
+            f"{response.text[:1000]}"
+
         )
 
     data = response.json()
 
-    return data[
-        "choices"
-    ][
-        0
-    ][
-        "message"
-    ][
-        "content"
-    ]
+    try:
+
+        return data[
+            "choices"
+        ][
+            0
+        ][
+            "message"
+        ][
+            "content"
+        ]
+
+    except Exception:
+
+        raise RuntimeError(
+
+            "OpenRouter returned an unexpected response: "
+            +
+            json.dumps(
+                data
+            )[:1000]
+
+        )
 
 
 # ============================================================
@@ -222,7 +251,10 @@ def call_groq(
     if json_mode:
 
         payload["response_format"] = {
-            "type": "json_object"
+
+            "type":
+                "json_object"
+
         }
 
     headers = {
@@ -250,21 +282,37 @@ def call_groq(
     if not response.ok:
 
         raise RuntimeError(
+
             f"Groq {response.status_code}: "
-            f"{response.text[:500]}"
+            f"{response.text[:1000]}"
+
         )
 
     data = response.json()
 
-    return data[
-        "choices"
-    ][
-        0
-    ][
-        "message"
-    ][
-        "content"
-    ]
+    try:
+
+        return data[
+            "choices"
+        ][
+            0
+        ][
+            "message"
+        ][
+            "content"
+        ]
+
+    except Exception:
+
+        raise RuntimeError(
+
+            "Groq returned an unexpected response: "
+            +
+            json.dumps(
+                data
+            )[:1000]
+
+        )
 
 
 # ============================================================
@@ -286,14 +334,24 @@ def call_gemini(
         )
 
     url = (
+
         GEMINI_URL
+
         +
+
         GEMINI_MODEL
+
         +
+
         ":generateContent"
+
     )
 
     contents = []
+
+    # ========================================================
+    # System instruction
+    # ========================================================
 
     if system_prompt:
 
@@ -310,6 +368,10 @@ def call_gemini(
             }]
 
         })
+
+    # ========================================================
+    # User prompt
+    # ========================================================
 
     contents.append({
 
@@ -359,8 +421,10 @@ def call_gemini(
         url,
 
         params={
+
             "key":
                 GEMINI_API_KEY
+
         },
 
         headers=headers,
@@ -374,25 +438,41 @@ def call_gemini(
     if not response.ok:
 
         raise RuntimeError(
+
             f"Gemini {response.status_code}: "
-            f"{response.text[:500]}"
+            f"{response.text[:1000]}"
+
         )
 
     data = response.json()
 
-    return data[
-        "candidates"
-    ][
-        0
-    ][
-        "content"
-    ][
-        "parts"
-    ][
-        0
-    ][
-        "text"
-    ]
+    try:
+
+        return data[
+            "candidates"
+        ][
+            0
+        ][
+            "content"
+        ][
+            "parts"
+        ][
+            0
+        ][
+            "text"
+        ]
+
+    except Exception:
+
+        raise RuntimeError(
+
+            "Gemini returned an unexpected response: "
+            +
+            json.dumps(
+                data
+            )[:1000]
+
+        )
 
 
 # ============================================================
@@ -402,7 +482,9 @@ def call_gemini(
 _PROVIDER_FAILURES = {
 
     "OpenRouter": 0,
+
     "Groq": 0,
+
     "Gemini": 0
 
 }
@@ -411,21 +493,30 @@ _PROVIDER_FAILURES = {
 _PROVIDER_DISABLED = {
 
     "OpenRouter": False,
+
     "Groq": False,
+
     "Gemini": False
 
 }
 
 
+# ============================================================
+# Reset Provider Status
+# ============================================================
+
 def reset_provider_status():
 
     global _PROVIDER_FAILURES
+
     global _PROVIDER_DISABLED
 
     _PROVIDER_FAILURES = {
 
         "OpenRouter": 0,
+
         "Groq": 0,
+
         "Gemini": 0
 
     }
@@ -433,14 +524,79 @@ def reset_provider_status():
     _PROVIDER_DISABLED = {
 
         "OpenRouter": False,
+
         "Groq": False,
+
         "Gemini": False
 
     }
 
 
 # ============================================================
-# PROVIDER CALL
+# Detect Provider Failure
+# ============================================================
+
+def should_disable_provider(
+    error_message
+):
+
+    text = str(
+        error_message
+    ).lower()
+
+    failure_codes = [
+
+        "429",
+
+        "401",
+
+        "402",
+
+        "403"
+
+    ]
+
+    for code in failure_codes:
+
+        if code in text:
+
+            return True
+
+    # Common quota/rate-limit messages
+
+    keywords = [
+
+        "rate limit",
+
+        "rate_limit",
+
+        "quota exceeded",
+
+        "quota",
+
+        "insufficient quota",
+
+        "too many requests",
+
+        "authentication",
+
+        "unauthorized",
+
+        "forbidden"
+
+    ]
+
+    for keyword in keywords:
+
+        if keyword in text:
+
+            return True
+
+    return False
+
+
+# ============================================================
+# Provider Call
 # ============================================================
 
 def _call_provider(
@@ -501,7 +657,9 @@ def _call_provider(
         )
 
     raise RuntimeError(
+
         f"Unknown provider: {provider_name}"
+
     )
 
 
@@ -529,11 +687,27 @@ def ask_ollama(
 
     errors = []
 
+    print(
+        ""
+    )
+
+    print(
+        "=================================================="
+    )
+
+    print(
+        "AI ROUTER STARTED"
+    )
+
+    print(
+        "=================================================="
+    )
+
     for provider_name in providers:
 
-        # ----------------------------------------------------
-        # Skip provider if already disabled
-        # ----------------------------------------------------
+        # ====================================================
+        # Skip disabled provider
+        # ====================================================
 
         if _PROVIDER_DISABLED.get(
             provider_name,
@@ -541,19 +715,76 @@ def ask_ollama(
         ):
 
             print(
+
                 f"Skipping {provider_name} "
-                f"(temporarily unavailable)"
+                "(disabled for this run)"
+
             )
 
             continue
 
+        # ====================================================
+        # Check API key
+        # ====================================================
+
+        if provider_name == "OpenRouter":
+
+            if not OPENROUTER_API_KEY:
+
+                print(
+                    "OpenRouter skipped: API key missing."
+                )
+
+                continue
+
+        if provider_name == "Groq":
+
+            if not GROQ_API_KEY:
+
+                print(
+                    "Groq skipped: API key missing."
+                )
+
+                continue
+
+        if provider_name == "Gemini":
+
+            if not GEMINI_API_KEY:
+
+                print(
+                    "Gemini skipped: API key missing."
+                )
+
+                continue
+
+        # ====================================================
+        # Call Provider
+        # ====================================================
 
         try:
 
             print(
-                f"AI provider: {provider_name}"
+                f"Trying AI provider: "
+                f"{provider_name}"
             )
 
+            print(
+                f"Model: "
+                +
+                (
+                    OPENROUTER_MODEL
+                    if provider_name == "OpenRouter"
+
+                    else
+
+                    GROQ_MODEL
+                    if provider_name == "Groq"
+
+                    else
+
+                    GEMINI_MODEL
+                )
+            )
 
             result = _call_provider(
 
@@ -571,43 +802,45 @@ def ask_ollama(
 
             )
 
+            if not result:
 
-            if result:
-
-                print(
-                    f"AI success: "
-                    f"{provider_name}"
+                raise RuntimeError(
+                    "Provider returned empty response."
                 )
 
-                _PROVIDER_FAILURES[
-                    provider_name
-                ] = 0
-
-                return result
-
-
-            raise RuntimeError(
-                "Provider returned empty response."
+            print(
+                f"AI SUCCESS: "
+                f"{provider_name}"
             )
 
+            _PROVIDER_FAILURES[
+                provider_name
+            ] = 0
+
+            return result
 
         except Exception as e:
 
-            error_message = str(e)
-
-            print(
-                f"{provider_name} failed:"
+            error_message = str(
+                e
             )
 
             print(
-                error_message[:500]
+                ""
             )
 
+            print(
+                f"AI FAILURE: "
+                f"{provider_name}"
+            )
+
+            print(
+                error_message[:1500]
+            )
 
             _PROVIDER_FAILURES[
                 provider_name
             ] += 1
-
 
             errors.append({
 
@@ -619,28 +852,12 @@ def ask_ollama(
 
             })
 
+            # =================================================
+            # Disable quota/auth/rate limited provider
+            # =================================================
 
-            # ------------------------------------------------
-            # Rate limits / quota / auth failures
-            # ------------------------------------------------
-
-            if any(
-
-                code in error_message
-
-                for code in [
-
-                    " 429",
-                    "429:",
-                    " 401",
-                    "401:",
-                    " 402",
-                    "402:",
-                    " 403",
-                    "403:"
-
-                ]
-
+            if should_disable_provider(
+                error_message
             ):
 
                 _PROVIDER_DISABLED[
@@ -654,11 +871,29 @@ def ask_ollama(
 
                 )
 
-
             print(
-                "Trying next provider..."
+                "Trying next AI provider..."
             )
 
+    # ========================================================
+    # ALL FAILED
+    # ========================================================
+
+    print(
+        ""
+    )
+
+    print(
+        "=================================================="
+    )
+
+    print(
+        "ALL AI PROVIDERS FAILED"
+    )
+
+    print(
+        "=================================================="
+    )
 
     raise RuntimeError(
 
@@ -683,6 +918,10 @@ def extract_json(response):
         return {}
 
 
+    # ========================================================
+    # Already a dictionary
+    # ========================================================
+
     if isinstance(
         response,
         dict
@@ -696,7 +935,9 @@ def extract_json(response):
     ).strip()
 
 
-    # Remove markdown fences
+    # ========================================================
+    # Remove Markdown JSON fences
+    # ========================================================
 
     text = re.sub(
 
@@ -710,7 +951,6 @@ def extract_json(response):
 
     )
 
-
     text = re.sub(
 
         r"^```\s*",
@@ -720,7 +960,6 @@ def extract_json(response):
         text
 
     )
-
 
     text = re.sub(
 
@@ -732,11 +971,12 @@ def extract_json(response):
 
     )
 
-
     text = text.strip()
 
 
+    # ========================================================
     # Direct JSON
+    # ========================================================
 
     try:
 
@@ -756,7 +996,9 @@ def extract_json(response):
         pass
 
 
+    # ========================================================
     # Find JSON object
+    # ========================================================
 
     start = text.find(
         "{"
@@ -765,7 +1007,6 @@ def extract_json(response):
     end = text.rfind(
         "}"
     )
-
 
     if (
 
@@ -784,7 +1025,6 @@ def extract_json(response):
         candidate = text[
             start:end + 1
         ]
-
 
         try:
 
@@ -805,6 +1045,8 @@ def extract_json(response):
 
 
     raise ValueError(
+
         "Could not extract valid JSON "
         "from AI response."
+
     )

@@ -11,7 +11,6 @@ from src.services.job_pre_filter import pre_filter_jobs
 def clean_jobs(jobs):
 
     unique = []
-
     seen = set()
 
     for job in jobs:
@@ -21,16 +20,12 @@ def clean_jobs(jobs):
                 "job_title",
                 ""
             ).lower().strip()
-
             + "|"
-
             + job.get(
                 "company",
                 ""
             ).lower().strip()
-
             + "|"
-
             + job.get(
                 "location",
                 ""
@@ -39,13 +34,9 @@ def clean_jobs(jobs):
 
         if key not in seen:
 
-            seen.add(
-                key
-            )
+            seen.add(key)
 
-            unique.append(
-                job
-            )
+            unique.append(job)
 
     return unique
 
@@ -59,9 +50,7 @@ def extract_job_filters(jobs):
     filters = {
 
         "titles": [],
-
         "companies": [],
-
         "locations": []
 
     }
@@ -149,7 +138,7 @@ def search_jobs(parameters):
     )
 
     # ========================================================
-    # Job Posting Date
+    # Job Posting Date Filter
     #
     # 1  = last 1 day
     # 3  = last 3 days
@@ -176,20 +165,32 @@ def search_jobs(parameters):
 
         posted_days = 7
 
-    # Prevent invalid negative values
-
     if posted_days < 0:
 
         posted_days = 0
 
     print(
-        "Job posting date filter:",
-        (
-            f"last {posted_days} days"
-            if posted_days > 0
-            else
-            "Any time"
+        "=================================================="
+    )
+
+    print(
+        "JOB SEARCH DATE FILTER"
+    )
+
+    if posted_days > 0:
+
+        print(
+            f"Requested: Last {posted_days} days"
         )
+
+    else:
+
+        print(
+            "Requested: Any time"
+        )
+
+    print(
+        "=================================================="
     )
 
     # ========================================================
@@ -241,7 +242,19 @@ def search_jobs(parameters):
         for city in cities:
 
             print(
-                f"Searching {title} - {city}"
+                ""
+            )
+
+            print(
+                "=================================================="
+            )
+
+            print(
+                f"Searching: {title} - {city}"
+            )
+
+            print(
+                "=================================================="
             )
 
             try:
@@ -262,13 +275,20 @@ def search_jobs(parameters):
 
                 print(
                     f"LinkedIn search failed "
-                    f"for {title} - {city}:",
-                    e
+                    f"for {title} - {city}:"
+                )
+
+                print(
+                    repr(e)
                 )
 
                 continue
 
             if not jobs:
+
+                print(
+                    "No jobs returned."
+                )
 
                 continue
 
@@ -312,7 +332,11 @@ def search_jobs(parameters):
     # ========================================================
 
     print(
-        "Raw jobs:",
+        ""
+    )
+
+    print(
+        "Raw jobs before duplicate removal:",
         len(results)
     )
 
@@ -351,7 +375,7 @@ def search_jobs(parameters):
 
             print(
                 "Pre-filter failed:",
-                e
+                repr(e)
             )
 
         print(
@@ -375,7 +399,7 @@ def search_jobs(parameters):
 
             print(
                 "Description loading failed:",
-                e
+                repr(e)
             )
 
     # ========================================================
@@ -420,11 +444,36 @@ def search_jobs(parameters):
 
         print(
             "Filter save skipped:",
-            e
+            repr(e)
         )
 
     # ========================================================
-    # Return
+    # Final Statistics
     # ========================================================
+
+    print(
+        ""
+    )
+
+    print(
+        "=================================================="
+    )
+
+    print(
+        "JOB SEARCH COMPLETED"
+    )
+
+    print(
+        f"Final jobs: {len(results)}"
+    )
+
+    print(
+        f"Posted-days filter: "
+        f"{posted_days if posted_days > 0 else 'Any time'}"
+    )
+
+    print(
+        "=================================================="
+    )
 
     return results
