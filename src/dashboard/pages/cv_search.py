@@ -3,6 +3,32 @@ import sys
 import os
 import hashlib
 
+# ==================================================
+# TEMPORARY AI SECRETS DEBUG
+# ==================================================
+
+st.write(
+    "OpenRouter:",
+    bool(st.secrets.get("OPENROUTER_API_KEY"))
+)
+
+st.write(
+    "Groq:",
+    bool(st.secrets.get("GROQ_API_KEY"))
+)
+
+st.write(
+    "Gemini:",
+    bool(st.secrets.get("GEMINI_API_KEY"))
+)
+
+st.write(
+    "Groq model:",
+    st.secrets.get(
+        "GROQ_MODEL",
+        "NOT SET"
+    )
+)
 
 # ==================================================
 # Project Root
