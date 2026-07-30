@@ -29,10 +29,11 @@ OPENROUTER_URL = (
     "https://openrouter.ai/api/v1/chat/completions"
 )
 
-OPENROUTER_MODEL = os.getenv(
-    "OPENROUTER_MODEL",
-    "openrouter/free"
-)
+# ============================================================
+# FREE MODEL ROUTER
+# ============================================================
+
+OPENROUTER_MODEL = "openrouter/free"
 
 
 if not OPENROUTER_API_KEY:
@@ -58,6 +59,10 @@ def ask_ollama(
     messages = []
 
 
+    # ========================================================
+    # System Prompt
+    # ========================================================
+
     if system_prompt:
 
         messages.append({
@@ -71,6 +76,10 @@ def ask_ollama(
         })
 
 
+    # ========================================================
+    # User Prompt
+    # ========================================================
+
     messages.append({
 
         "role":
@@ -81,6 +90,10 @@ def ask_ollama(
 
     })
 
+
+    # ========================================================
+    # Request Payload
+    # ========================================================
 
     payload = {
 
@@ -96,6 +109,10 @@ def ask_ollama(
     }
 
 
+    # ========================================================
+    # JSON Mode
+    # ========================================================
+
     if json_mode:
 
         payload["response_format"] = {
@@ -105,6 +122,10 @@ def ask_ollama(
 
         }
 
+
+    # ========================================================
+    # Headers
+    # ========================================================
 
     headers = {
 
@@ -123,6 +144,10 @@ def ask_ollama(
     }
 
 
+    # ========================================================
+    # Send Request
+    # ========================================================
+
     response = requests.post(
 
         OPENROUTER_URL,
@@ -135,6 +160,10 @@ def ask_ollama(
 
     )
 
+
+    # ========================================================
+    # Error Handling
+    # ========================================================
 
     if not response.ok:
 
@@ -152,6 +181,10 @@ def ask_ollama(
     response.raise_for_status()
 
 
+    # ========================================================
+    # Parse Response
+    # ========================================================
+
     data = response.json()
 
 
@@ -161,7 +194,17 @@ def ask_ollama(
 
     try:
 
-        content = data["choices"][0]["message"]["content"]
+        content = (
+            data[
+                "choices"
+            ][
+                0
+            ][
+                "message"
+            ][
+                "content"
+            ]
+        )
 
     except (
         KeyError,
@@ -170,11 +213,17 @@ def ask_ollama(
     ):
 
         raise RuntimeError(
-            "OpenRouter returned an unexpected response: "
-            + json.dumps(
+
+            "OpenRouter returned an unexpected "
+            "response: "
+
+            +
+
+            json.dumps(
                 data,
                 indent=2
             )
+
         )
 
 
@@ -183,6 +232,20 @@ def ask_ollama(
         raise RuntimeError(
             "OpenRouter returned an empty response."
         )
+
+
+    # ========================================================
+    # Display Actual Model Used
+    # ========================================================
+
+    model_used = data.get(
+        "model",
+        "unknown"
+    )
+
+    print(
+        f"OpenRouter free model used: {model_used}"
+    )
 
 
     return content
@@ -199,9 +262,9 @@ def extract_json(response):
         return {}
 
 
-    # --------------------------------------------------------
-    # Already a dictionary
-    # --------------------------------------------------------
+    # ========================================================
+    # Already Dictionary
+    # ========================================================
 
     if isinstance(
         response,
@@ -216,9 +279,9 @@ def extract_json(response):
     ).strip()
 
 
-    # --------------------------------------------------------
-    # Remove Markdown JSON fences
-    # --------------------------------------------------------
+    # ========================================================
+    # Remove JSON Markdown Fences
+    # ========================================================
 
     text = re.sub(
 
@@ -258,9 +321,9 @@ def extract_json(response):
     text = text.strip()
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # Direct JSON
-    # --------------------------------------------------------
+    # ========================================================
 
     try:
 
@@ -280,9 +343,9 @@ def extract_json(response):
         pass
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # Find JSON Object
-    # --------------------------------------------------------
+    # ========================================================
 
     start = text.find(
         "{"
@@ -324,9 +387,9 @@ def extract_json(response):
             pass
 
 
-    # --------------------------------------------------------
-    # Unable to Parse
-    # --------------------------------------------------------
+    # ========================================================
+    # Unable To Parse
+    # ========================================================
 
     raise ValueError(
         "Could not extract valid JSON from AI response."

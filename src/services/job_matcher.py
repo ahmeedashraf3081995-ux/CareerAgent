@@ -37,43 +37,65 @@ def clean_score(value):
 
 
 # ============================================================
-# AI Job Analysis
+# Analyze One Batch Of Jobs
 # ============================================================
 
-def analyze_job_with_ai(
+def analyze_job_batch_with_ai(
     cv_text,
-    job
+    jobs
 ):
 
-    title = job.get(
-        "job_title",
-        ""
-    )
+    if not jobs:
+        return []
 
-    company = job.get(
-        "company",
-        ""
-    )
 
-    location = job.get(
-        "location",
-        ""
-    )
+    job_data = []
 
-    description = job.get(
-        "description",
-        ""
-    )
+
+    for index, job in enumerate(jobs):
+
+        job_data.append({
+
+            "index":
+                index,
+
+            "job_title":
+                job.get(
+                    "job_title",
+                    ""
+                ),
+
+            "company":
+                job.get(
+                    "company",
+                    ""
+                ),
+
+            "location":
+                job.get(
+                    "location",
+                    ""
+                ),
+
+            "description":
+                job.get(
+                    "description",
+                    ""
+                )
+
+        })
 
 
     prompt = f"""
 You are CareerAgent's expert recruitment and career-matching AI.
 
-Your task is to evaluate how well the candidate matches this job.
+Analyze ALL jobs below against the candidate's CV.
+
+You must analyze each job independently.
 
 IMPORTANT:
 
-Analyze MEANING and EXPERIENCE, not just exact keywords.
+Analyze meaning and experience, not just exact keywords.
 
 For example:
 
@@ -102,15 +124,15 @@ Consider:
 13. Career progression
 14. Overall suitability
 
-FACTUAL RULE:
+FACTUAL RULES:
 
 Never invent experience.
 
 Never assume the candidate has a skill unless the CV provides reasonable evidence.
 
-A skill can be considered matched when the candidate demonstrates equivalent or transferable experience even if the wording differs.
+A skill can be considered matched when the candidate demonstrates equivalent or transferable experience.
 
-A skill should be considered missing only when the job genuinely requires it and the CV provides no reasonable evidence of it.
+A skill should be considered missing only when the job genuinely requires it and the CV provides no reasonable evidence.
 
 Do not punish the candidate simply because the exact keyword is absent.
 
@@ -123,28 +145,10 @@ CANDIDATE CV
 {cv_text}
 
 --------------------------------------------------
-JOB TITLE
+JOBS
 --------------------------------------------------
 
-{title}
-
---------------------------------------------------
-COMPANY
---------------------------------------------------
-
-{company}
-
---------------------------------------------------
-LOCATION
---------------------------------------------------
-
-{location}
-
---------------------------------------------------
-JOB DESCRIPTION
---------------------------------------------------
-
-{description}
+{json.dumps(job_data, ensure_ascii=False)}
 
 --------------------------------------------------
 SCORING
@@ -153,24 +157,22 @@ SCORING
 Give an overall score from 0 to 100.
 
 90-100:
-Exceptional fit. Candidate strongly satisfies the role.
+Exceptional fit.
 
 80-89:
-Excellent fit. Candidate is highly suitable with only minor gaps.
+Excellent fit.
 
 70-79:
-Good fit. Candidate is clearly relevant but has some gaps.
+Good fit.
 
 60-69:
-Moderate fit. Some strong relevance but meaningful gaps exist.
+Moderate fit.
 
 50-59:
-Partial fit. Limited alignment.
+Partial fit.
 
 0-49:
 Weak fit.
-
-Do NOT automatically give high scores.
 
 Be realistic and selective.
 
@@ -178,41 +180,55 @@ Be realistic and selective.
 RETURN JSON ONLY
 --------------------------------------------------
 
-Return exactly:
+Return exactly this structure:
 
 {{
-    "match_score": 0,
+    "jobs": [
 
-    "match_level": "",
+        {{
+            "index": 0,
 
-    "matched_skills": [],
+            "match_score": 0,
 
-    "missing_skills": [],
+            "match_level": "",
 
-    "transferable_skills": [],
+            "matched_skills": [],
 
-    "title_match": 0,
+            "missing_skills": [],
 
-    "seniority_match": 0,
+            "transferable_skills": [],
 
-    "industry_match": 0,
+            "title_match": 0,
 
-    "experience_match": 0,
+            "seniority_match": 0,
 
-    "technical_match": 0,
+            "industry_match": 0,
 
-    "leadership_match": 0,
+            "experience_match": 0,
 
-    "ranking_reason": "",
+            "technical_match": 0,
 
-    "match_reason": "",
+            "leadership_match": 0,
 
-    "strengths": [],
+            "ranking_reason": "",
 
-    "gaps": [],
+            "match_reason": "",
 
-    "recommendation": ""
+            "strengths": [],
+
+            "gaps": [],
+
+            "recommendation": ""
+        }}
+
+    ]
 }}
+
+IMPORTANT:
+
+Return exactly ONE result for EVERY job.
+
+The "index" must correspond to the job index provided above.
 
 All scores must be integers from 0 to 100.
 
@@ -225,13 +241,13 @@ Return valid JSON only.
     system_prompt = """
 You are CareerAgent's recruitment intelligence engine.
 
-Your job is to objectively compare a candidate's CV against a job.
+Analyze multiple jobs against one candidate CV.
 
 Use semantic understanding rather than simple keyword matching.
 
 Never fabricate candidate experience.
 
-Never invent skills, responsibilities, achievements or qualifications.
+Analyze every supplied job.
 
 Return valid JSON only.
 
@@ -247,7 +263,7 @@ Accuracy is more important than generosity.
 
             system_prompt=system_prompt,
 
-            temperature=0.1,
+            temperature=0,
 
             json_mode=True
 
@@ -259,22 +275,225 @@ Accuracy is more important than generosity.
         )
 
 
-        if not isinstance(data, dict):
+        if not isinstance(
+            data,
+            dict
+        ):
 
-            return None
+            return []
 
 
-        return data
+        results = data.get(
+            "jobs",
+            []
+        )
+
+
+        if not isinstance(
+            results,
+            list
+        ):
+
+            return []
+
+
+        return results
 
 
     except Exception as e:
 
         print(
-            "AI job analysis error:",
+            "AI batch analysis error:",
             e
         )
 
-        return None
+        return []
+
+
+# ============================================================
+# Apply AI Analysis
+# ============================================================
+
+def apply_analysis(
+    job,
+    analysis
+):
+
+    job["match_score"] = clean_score(
+
+        analysis.get(
+            "match_score",
+            0
+        )
+
+    )
+
+
+    job["matched_skills"] = safe_list(
+
+        analysis.get(
+            "matched_skills",
+            []
+        )
+
+    )
+
+
+    job["missing_skills"] = safe_list(
+
+        analysis.get(
+            "missing_skills",
+            []
+        )
+
+    )
+
+
+    job["transferable_skills"] = safe_list(
+
+        analysis.get(
+            "transferable_skills",
+            []
+        )
+
+    )
+
+
+    job["title_score"] = clean_score(
+
+        analysis.get(
+            "title_match",
+            0
+        )
+
+    )
+
+
+    job["seniority_score"] = clean_score(
+
+        analysis.get(
+            "seniority_match",
+            0
+        )
+
+    )
+
+
+    job["industry_score"] = clean_score(
+
+        analysis.get(
+            "industry_match",
+            0
+        )
+
+    )
+
+
+    job["experience_score"] = clean_score(
+
+        analysis.get(
+            "experience_match",
+            0
+        )
+
+    )
+
+
+    job["technical_score"] = clean_score(
+
+        analysis.get(
+            "technical_match",
+            0
+        )
+
+    )
+
+
+    job["leadership_score"] = clean_score(
+
+        analysis.get(
+            "leadership_match",
+            0
+        )
+
+    )
+
+
+    job["match_level"] = (
+
+        analysis.get(
+            "match_level",
+            ""
+        )
+
+        or
+
+        "AI Match"
+
+    )
+
+
+    job["match_reason"] = (
+
+        analysis.get(
+            "match_reason",
+            ""
+        )
+
+        or
+
+        analysis.get(
+            "ranking_reason",
+            ""
+        )
+
+    )
+
+
+    job["ai_ranking_reason"] = (
+
+        analysis.get(
+            "ranking_reason",
+            ""
+        )
+
+    )
+
+
+    job["strengths"] = safe_list(
+
+        analysis.get(
+            "strengths",
+            []
+        )
+
+    )
+
+
+    job["gaps"] = safe_list(
+
+        analysis.get(
+            "gaps",
+            []
+        )
+
+    )
+
+
+    job["recommendation"] = (
+
+        analysis.get(
+            "recommendation",
+            ""
+        )
+
+    )
+
+
+    job["ai_analyzed"] = True
+
+
+    return job
 
 
 # ============================================================
@@ -283,7 +502,8 @@ Accuracy is more important than generosity.
 
 def match_jobs(
     cv_text,
-    jobs
+    jobs,
+    batch_size=10
 ):
 
     if not cv_text:
@@ -299,287 +519,187 @@ def match_jobs(
     results = []
 
 
-    print(
-        f"AI analyzing {len(jobs)} jobs..."
+    total_jobs = len(jobs)
+
+    total_batches = (
+
+        (total_jobs + batch_size - 1)
+        // batch_size
+
     )
 
 
-    for number, job in enumerate(
-        jobs,
-        start=1
-    ):
-
-        print(
-            f"Analyzing job {number}/{len(jobs)}: "
-            f"{job.get('job_title', '')}"
-        )
-
-
-        analysis = analyze_job_with_ai(
-
-            cv_text,
-
-            job
-
-        )
-
-
-        # ====================================================
-        # AI Analysis Successful
-        # ====================================================
-
-        if analysis:
-
-            job["match_score"] = clean_score(
-
-                analysis.get(
-                    "match_score",
-                    0
-                )
-
-            )
-
-
-            job["matched_skills"] = safe_list(
-
-                analysis.get(
-                    "matched_skills",
-                    []
-                )
-
-            )
-
-
-            job["missing_skills"] = safe_list(
-
-                analysis.get(
-                    "missing_skills",
-                    []
-                )
-
-            )
-
-
-            job["transferable_skills"] = safe_list(
-
-                analysis.get(
-                    "transferable_skills",
-                    []
-                )
-
-            )
-
-
-            job["title_score"] = clean_score(
-
-                analysis.get(
-                    "title_match",
-                    0
-                )
-
-            )
-
-
-            job["seniority_score"] = clean_score(
-
-                analysis.get(
-                    "seniority_match",
-                    0
-                )
-
-            )
-
-
-            job["industry_score"] = clean_score(
-
-                analysis.get(
-                    "industry_match",
-                    0
-                )
-
-            )
-
-
-            job["experience_score"] = clean_score(
-
-                analysis.get(
-                    "experience_match",
-                    0
-                )
-
-            )
-
-
-            job["technical_score"] = clean_score(
-
-                analysis.get(
-                    "technical_match",
-                    0
-                )
-
-            )
-
-
-            job["leadership_score"] = clean_score(
-
-                analysis.get(
-                    "leadership_match",
-                    0
-                )
-
-            )
-
-
-            job["match_level"] = (
-
-                analysis.get(
-                    "match_level",
-                    ""
-                )
-
-                or
-
-                "AI Match"
-
-            )
-
-
-            job["match_reason"] = (
-
-                analysis.get(
-                    "match_reason",
-                    ""
-                )
-
-                or
-
-                analysis.get(
-                    "ranking_reason",
-                    ""
-                )
-
-            )
-
-
-            job["ai_ranking_reason"] = (
-
-                analysis.get(
-                    "ranking_reason",
-                    ""
-                )
-
-            )
-
-
-            job["strengths"] = safe_list(
-
-                analysis.get(
-                    "strengths",
-                    []
-                )
-
-            )
-
-
-            job["gaps"] = safe_list(
-
-                analysis.get(
-                    "gaps",
-                    []
-                )
-
-            )
-
-
-            job["recommendation"] = (
-
-                analysis.get(
-                    "recommendation",
-                    ""
-                )
-
-            )
-
-
-            job["ai_analyzed"] = True
-
-
-        # ====================================================
-        # AI Failed
-        # ====================================================
-
-        else:
-
-            print(
-                f"AI analysis failed for: "
-                f"{job.get('job_title', '')}"
-            )
-
-
-            # Keep the job instead of crashing
-            job["match_score"] = job.get(
-                "match_score",
-                0
-            )
-
-
-            job["matched_skills"] = job.get(
-                "matched_skills",
-                []
-            )
-
-
-            job["missing_skills"] = job.get(
-                "missing_skills",
-                []
-            )
-
-
-            job["transferable_skills"] = []
-
-
-            job["title_score"] = 0
-
-            job["seniority_score"] = 0
-
-            job["industry_score"] = 0
-
-            job["experience_score"] = 0
-
-            job["technical_score"] = 0
-
-            job["leadership_score"] = 0
-
-
-            job["match_level"] = (
-                "Unable to Analyze"
-            )
-
-
-            job["match_reason"] = (
-                "AI analysis could not be completed "
-                "for this job."
-            )
-
-
-            job["ai_ranking_reason"] = ""
-
-            job["strengths"] = []
-
-            job["gaps"] = []
-
-            job["recommendation"] = ""
-
-            job["ai_analyzed"] = False
-
-
-        results.append(
-            job
-        )
+    print(
+        f"AI analyzing {total_jobs} jobs "
+        f"in {total_batches} batches..."
+    )
 
 
     # ========================================================
-    # Sort By AI Score
+    # Process Jobs In Batches
+    # ========================================================
+
+    for batch_number, start in enumerate(
+
+        range(
+            0,
+            total_jobs,
+            batch_size
+        ),
+
+        start=1
+
+    ):
+
+        batch = jobs[
+
+            start:
+            start + batch_size
+
+        ]
+
+
+        print(
+
+            f"Analyzing batch "
+            f"{batch_number}/{total_batches} "
+            f"({len(batch)} jobs)..."
+
+        )
+
+
+        analyses = analyze_job_batch_with_ai(
+
+            cv_text,
+
+            batch
+
+        )
+
+
+        # ----------------------------------------------------
+        # Create Analysis Map
+        # ----------------------------------------------------
+
+        analysis_map = {}
+
+
+        for analysis in analyses:
+
+            if not isinstance(
+                analysis,
+                dict
+            ):
+
+                continue
+
+
+            try:
+
+                index = int(
+
+                    analysis.get(
+                        "index",
+                        -1
+                    )
+
+                )
+
+            except Exception:
+
+                continue
+
+
+            if 0 <= index < len(batch):
+
+                analysis_map[index] = analysis
+
+
+        # ----------------------------------------------------
+        # Apply Results
+        # ----------------------------------------------------
+
+        for index, job in enumerate(
+            batch
+        ):
+
+            analysis = analysis_map.get(
+                index
+            )
+
+
+            if analysis:
+
+                job = apply_analysis(
+
+                    job,
+
+                    analysis
+
+                )
+
+
+            else:
+
+                print(
+
+                    "AI analysis missing for:",
+
+                    job.get(
+                        "job_title",
+                        ""
+                    )
+
+                )
+
+
+                job["match_score"] = 0
+
+                job["matched_skills"] = []
+
+                job["missing_skills"] = []
+
+                job["transferable_skills"] = []
+
+                job["title_score"] = 0
+
+                job["seniority_score"] = 0
+
+                job["industry_score"] = 0
+
+                job["experience_score"] = 0
+
+                job["technical_score"] = 0
+
+                job["leadership_score"] = 0
+
+                job["match_level"] = (
+                    "Unable to Analyze"
+                )
+
+                job["match_reason"] = (
+                    "AI analysis could not be "
+                    "completed for this job."
+                )
+
+                job["ai_ranking_reason"] = ""
+
+                job["strengths"] = []
+
+                job["gaps"] = []
+
+                job["recommendation"] = ""
+
+                job["ai_analyzed"] = False
+
+
+            results.append(
+                job
+            )
+
+
+    # ========================================================
+    # Sort By Match Score
     # ========================================================
 
     results.sort(
@@ -599,15 +719,18 @@ def match_jobs(
     # ========================================================
 
     for rank, job in enumerate(
+
         results,
+
         start=1
+
     ):
 
         job["rank"] = rank
 
 
     print(
-        "AI job matching completed."
+        "AI batch job matching completed."
     )
 
 

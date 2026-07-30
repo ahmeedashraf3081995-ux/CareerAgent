@@ -14,12 +14,11 @@ def rank_jobs_with_ai(
 ):
 
     if not jobs:
-
         return []
 
 
     # ========================================================
-    # Prepare Job Data
+    # Prepare Compact Job Data
     # ========================================================
 
     job_data = []
@@ -50,12 +49,6 @@ def rank_jobs_with_ai(
                     ""
                 ),
 
-            "description":
-                job.get(
-                    "description",
-                    ""
-                ),
-
             "match_score":
                 job.get(
                     "match_score",
@@ -72,20 +65,85 @@ def rank_jobs_with_ai(
                 job.get(
                     "missing_skills",
                     []
+                ),
+
+            "transferable_skills":
+                job.get(
+                    "transferable_skills",
+                    []
+                ),
+
+            "title_score":
+                job.get(
+                    "title_score",
+                    0
+                ),
+
+            "seniority_score":
+                job.get(
+                    "seniority_score",
+                    0
+                ),
+
+            "industry_score":
+                job.get(
+                    "industry_score",
+                    0
+                ),
+
+            "experience_score":
+                job.get(
+                    "experience_score",
+                    0
+                ),
+
+            "technical_score":
+                job.get(
+                    "technical_score",
+                    0
+                ),
+
+            "leadership_score":
+                job.get(
+                    "leadership_score",
+                    0
+                ),
+
+            "strengths":
+                job.get(
+                    "strengths",
+                    []
+                ),
+
+            "gaps":
+                job.get(
+                    "gaps",
+                    []
+                ),
+
+            "recommendation":
+                job.get(
+                    "recommendation",
+                    ""
                 )
 
         })
 
 
+    # ========================================================
+    # AI Ranking Prompt
+    # ========================================================
+
     prompt = f"""
 You are CareerAgent's senior recruitment ranking engine.
 
-Rank ALL jobs against the candidate's CV.
+You have already received individual AI analysis for every job.
 
-The jobs have already received individual AI match analysis.
+Your task is to rank ALL jobs against the candidate's CV.
 
-Your task is to compare them and determine which opportunities
-are genuinely strongest for this candidate.
+Do NOT re-analyze the full job descriptions.
+
+Use the structured analysis provided for each job.
 
 Consider:
 
@@ -100,36 +158,40 @@ Consider:
 - Technical tools
 - Planning experience
 - Leadership
-- Job responsibilities
-- Job requirements
-- Quality of opportunity
+- Existing match score
+- Strengths
+- Gaps
 - Realistic suitability
 
-Do not simply rank by the existing match score.
+IMPORTANT:
 
-Use your own professional judgment.
+Do not simply sort by match_score.
+
+Use professional recruitment judgment.
 
 Do not invent candidate experience.
 
-CV:
+A job with a slightly lower technical score may still be a better
+career opportunity because of title, seniority, progression,
+responsibility or overall fit.
 
-----------------
+--------------------------------------------------
+CANDIDATE CV
+--------------------------------------------------
 
 {cv_text}
 
-----------------
-
-JOBS:
-
-----------------
+--------------------------------------------------
+ANALYZED JOBS
+--------------------------------------------------
 
 {job_data}
 
-----------------
+--------------------------------------------------
+RETURN JSON ONLY
+--------------------------------------------------
 
 Return ALL jobs.
-
-Return ONLY JSON.
 
 Use exactly:
 
@@ -155,19 +217,21 @@ Use exactly:
 
 Rules:
 
-ai_score must be 0-100.
+ai_score must be between 0 and 100.
 
 100 = exceptional career opportunity.
 
-best_fit should be true only for the strongest opportunities.
+best_fit = true ONLY for the strongest opportunities.
 
-priority must be one of:
+priority must be exactly:
 
 "High"
 "Medium"
 "Low"
 
-Be selective.
+Return one ranking result for every job.
+
+Do not omit jobs.
 
 Return valid JSON only.
 """
@@ -176,17 +240,24 @@ Return valid JSON only.
     system_prompt = """
 You are CareerAgent's senior recruitment ranking AI.
 
-You compare multiple job opportunities against a candidate.
+You compare multiple already-analyzed job opportunities
+against one candidate.
 
-Use semantic understanding and professional recruitment judgment.
+Use professional recruitment judgment.
+
+Use semantic understanding.
 
 Never fabricate candidate experience.
 
-Never reward a job simply because it contains matching keywords.
+Never rank a job highly simply because of keyword overlap.
 
 Return valid JSON only.
 """
 
+
+    # ========================================================
+    # AI Call
+    # ========================================================
 
     try:
 
@@ -196,7 +267,7 @@ Return valid JSON only.
 
             system_prompt=system_prompt,
 
-            temperature=0.1,
+            temperature=0,
 
             json_mode=True
 
@@ -218,10 +289,34 @@ Return valid JSON only.
         return jobs
 
 
+    if not isinstance(
+        data,
+        dict
+    ):
+
+        print(
+            "AI ranking returned invalid data."
+        )
+
+        return jobs
+
+
     rankings = data.get(
         "ranked_jobs",
         []
     )
+
+
+    if not isinstance(
+        rankings,
+        list
+    ):
+
+        print(
+            "AI ranking returned no ranked jobs."
+        )
+
+        return jobs
 
 
     ranking_map = {}
@@ -232,6 +327,14 @@ Return valid JSON only.
     # ========================================================
 
     for item in rankings:
+
+        if not isinstance(
+            item,
+            dict
+        ):
+
+            continue
+
 
         try:
 
@@ -245,6 +348,11 @@ Return valid JSON only.
             )
 
         except Exception:
+
+            continue
+
+
+        if index < 0 or index >= len(jobs):
 
             continue
 
@@ -281,6 +389,23 @@ Return valid JSON only.
         )
 
 
+        priority = item.get(
+            "priority",
+            "Medium"
+        )
+
+
+        if priority not in [
+
+            "High",
+            "Medium",
+            "Low"
+
+        ]:
+
+            priority = "Medium"
+
+
         ranking_map[index] = {
 
             "ai_score":
@@ -301,10 +426,7 @@ Return valid JSON only.
                 ),
 
             "priority":
-                item.get(
-                    "priority",
-                    "Medium"
-                ),
+                priority,
 
             "recommendation":
                 item.get(
@@ -316,7 +438,7 @@ Return valid JSON only.
 
 
     # ========================================================
-    # Apply AI Ranking
+    # Apply Ranking
     # ========================================================
 
     for index, job in enumerate(
@@ -375,9 +497,7 @@ Return valid JSON only.
             )
 
 
-            # ------------------------------------------------
-            # AI ranking becomes the primary score
-            # ------------------------------------------------
+            # AI ranking becomes final score
 
             job["match_score"] = (
 
@@ -390,9 +510,14 @@ Return valid JSON only.
 
         else:
 
+            # Keep original matcher score
+
             job["ai_score"] = job.get(
+
                 "match_score",
+
                 0
+
             )
 
 
@@ -412,11 +537,14 @@ Return valid JSON only.
     jobs.sort(
 
         key=lambda x: x.get(
+
             "ai_score",
+
             x.get(
                 "match_score",
                 0
             )
+
         ),
 
         reverse=True
@@ -429,19 +557,25 @@ Return valid JSON only.
     # ========================================================
 
     for rank, job in enumerate(
+
         jobs,
+
         start=1
+
     ):
 
         job["rank"] = rank
 
 
         score = job.get(
+
             "ai_score",
+
             job.get(
                 "match_score",
                 0
             )
+
         )
 
 

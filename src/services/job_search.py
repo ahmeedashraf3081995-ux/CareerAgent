@@ -1,12 +1,19 @@
 from src.scrapers.linkedin_scraper import scrape_linkedin
+
 from src.services.title_expander import expand_titles
+
 from src.services.description_loader import load_descriptions
+
 from src.services.job_pre_filter import pre_filter_jobs
 
+from src.services.job_matcher import match_jobs
 
-# ==================================================
+from src.services.job_ranker import rank_jobs_with_ai
+
+
+# ============================================================
 # Remove Duplicate Jobs
-# ==================================================
+# ============================================================
 
 def clean_jobs(jobs):
 
@@ -55,9 +62,9 @@ def clean_jobs(jobs):
     return unique
 
 
-# ==================================================
+# ============================================================
 # Extract Filters
-# ==================================================
+# ============================================================
 
 def extract_job_filters(jobs):
 
@@ -114,14 +121,18 @@ def extract_job_filters(jobs):
     return filters
 
 
-# ==================================================
+# ============================================================
 # Search Jobs
-# ==================================================
+# ============================================================
 
 def search_jobs(parameters):
 
     results = []
 
+
+    # ========================================================
+    # Parameters
+    # ========================================================
 
     job_titles = parameters.get(
         "job_titles",
@@ -147,9 +158,9 @@ def search_jobs(parameters):
     )
 
 
-    # ==================================================
+    # ========================================================
     # Default Search
-    # ==================================================
+    # ========================================================
 
     if not job_titles:
 
@@ -162,9 +173,9 @@ def search_jobs(parameters):
         ]
 
 
-    # ==================================================
+    # ========================================================
     # Expand Titles
-    # ==================================================
+    # ========================================================
 
     job_titles = expand_titles(
         job_titles
@@ -180,9 +191,9 @@ def search_jobs(parameters):
     )
 
 
-    # ==================================================
+    # ========================================================
     # Default Cities
-    # ==================================================
+    # ========================================================
 
     if not cities:
 
@@ -191,9 +202,9 @@ def search_jobs(parameters):
         ]
 
 
-    # ==================================================
-    # LinkedIn Search
-    # ==================================================
+    # ========================================================
+    # LinkedIn Scraping
+    # ========================================================
 
     for title in job_titles:
 
@@ -217,9 +228,9 @@ def search_jobs(parameters):
 
             for job in jobs:
 
-                # ----------------------------------
+                # --------------------------------------------
                 # Company Filter
-                # ----------------------------------
+                # --------------------------------------------
 
                 if companies:
 
@@ -257,9 +268,9 @@ def search_jobs(parameters):
     )
 
 
-    # ==================================================
+    # ========================================================
     # Remove Duplicates
-    # ==================================================
+    # ========================================================
 
     results = clean_jobs(
         results
@@ -272,9 +283,9 @@ def search_jobs(parameters):
     )
 
 
-    # ==================================================
+    # ========================================================
     # Smart Pre Filter
-    # ==================================================
+    # ========================================================
 
     if cv_text:
 
@@ -295,39 +306,94 @@ def search_jobs(parameters):
         )
 
 
-    # ==================================================
+    # ========================================================
     # Load Job Descriptions
-    # ==================================================
-
-    # IMPORTANT:
-    # No 30-job limit anymore.
-    #
-    # Every job remaining after the relevance filter
-    # will be sent to the description loader.
+    # ========================================================
 
     results = load_descriptions(
         results
     )
 
 
-    print(
-        "Descriptions loaded:",
-        len(
-            [
-                job
-                for job in results
-                if job.get(
-                    "description",
-                    ""
-                )
-            ]
-        )
+    descriptions_loaded = len(
+
+        [
+
+            job
+
+            for job in results
+
+            if job.get(
+                "description",
+                ""
+            )
+
+        ]
+
     )
 
 
-    # ==================================================
+    print(
+        "Descriptions loaded:",
+        descriptions_loaded
+    )
+
+
+    # ========================================================
+    # AI JOB MATCHING
+    # ========================================================
+
+    if cv_text and results:
+
+        print(
+            "Starting AI job matching..."
+        )
+
+
+        results = match_jobs(
+
+            cv_text,
+
+            results,
+
+            batch_size=10
+
+        )
+
+
+        print(
+            "AI job matching finished."
+        )
+
+
+    # ========================================================
+    # AI FINAL RANKING
+    # ========================================================
+
+    if cv_text and results:
+
+        print(
+            "Starting AI final ranking..."
+        )
+
+
+        results = rank_jobs_with_ai(
+
+            cv_text,
+
+            results
+
+        )
+
+
+        print(
+            "AI final ranking finished."
+        )
+
+
+    # ========================================================
     # Save Filters
-    # ==================================================
+    # ========================================================
 
     try:
 
@@ -335,9 +401,11 @@ def search_jobs(parameters):
 
 
         st.session_state.job_filters = (
+
             extract_job_filters(
                 results
             )
+
         )
 
 
@@ -347,6 +415,16 @@ def search_jobs(parameters):
             "Filter save skipped:",
             e
         )
+
+
+    # ========================================================
+    # Final Results
+    # ========================================================
+
+    print(
+        "Final jobs:",
+        len(results)
+    )
 
 
     return results
