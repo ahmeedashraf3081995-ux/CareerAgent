@@ -18,7 +18,7 @@ load_dotenv(
 
 
 # ============================================================
-# API Keys
+# API KEYS
 # ============================================================
 
 OPENROUTER_API_KEY = os.getenv(
@@ -35,7 +35,7 @@ GEMINI_API_KEY = os.getenv(
 
 
 # ============================================================
-# Models
+# MODELS
 # ============================================================
 
 OPENROUTER_MODEL = os.getenv(
@@ -43,13 +43,11 @@ OPENROUTER_MODEL = os.getenv(
     "openrouter/free"
 )
 
-# Groq model
 GROQ_MODEL = os.getenv(
     "GROQ_MODEL",
     "openai/gpt-oss-120b"
 )
 
-# Gemini model
 GEMINI_MODEL = os.getenv(
     "GEMINI_MODEL",
     "gemini-2.5-flash"
@@ -57,7 +55,7 @@ GEMINI_MODEL = os.getenv(
 
 
 # ============================================================
-# API URLs
+# URLS
 # ============================================================
 
 OPENROUTER_URL = (
@@ -74,7 +72,7 @@ GEMINI_URL = (
 
 
 # ============================================================
-# Build Messages
+# BUILD MESSAGES
 # ============================================================
 
 def build_messages(
@@ -100,7 +98,7 @@ def build_messages(
 
 
 # ============================================================
-# OpenRouter
+# OPENROUTER
 # ============================================================
 
 def call_openrouter(
@@ -116,7 +114,6 @@ def call_openrouter(
         raise RuntimeError(
             "OPENROUTER_API_KEY not configured."
         )
-
 
     payload = {
 
@@ -134,13 +131,11 @@ def call_openrouter(
 
     }
 
-
     if json_mode:
 
         payload["response_format"] = {
             "type": "json_object"
         }
-
 
     headers = {
 
@@ -158,7 +153,6 @@ def call_openrouter(
 
     }
 
-
     response = requests.post(
 
         OPENROUTER_URL,
@@ -171,7 +165,6 @@ def call_openrouter(
 
     )
 
-
     if not response.ok:
 
         raise RuntimeError(
@@ -179,9 +172,7 @@ def call_openrouter(
             f"{response.text[:500]}"
         )
 
-
     data = response.json()
-
 
     return data[
         "choices"
@@ -195,7 +186,7 @@ def call_openrouter(
 
 
 # ============================================================
-# Groq
+# GROQ
 # ============================================================
 
 def call_groq(
@@ -211,7 +202,6 @@ def call_groq(
         raise RuntimeError(
             "GROQ_API_KEY not configured."
         )
-
 
     payload = {
 
@@ -229,13 +219,11 @@ def call_groq(
 
     }
 
-
     if json_mode:
 
         payload["response_format"] = {
             "type": "json_object"
         }
-
 
     headers = {
 
@@ -246,7 +234,6 @@ def call_groq(
             "application/json"
 
     }
-
 
     response = requests.post(
 
@@ -260,7 +247,6 @@ def call_groq(
 
     )
 
-
     if not response.ok:
 
         raise RuntimeError(
@@ -268,9 +254,7 @@ def call_groq(
             f"{response.text[:500]}"
         )
 
-
     data = response.json()
-
 
     return data[
         "choices"
@@ -284,7 +268,7 @@ def call_groq(
 
 
 # ============================================================
-# Gemini
+# GEMINI
 # ============================================================
 
 def call_gemini(
@@ -301,7 +285,6 @@ def call_gemini(
             "GEMINI_API_KEY not configured."
         )
 
-
     url = (
         GEMINI_URL
         +
@@ -310,9 +293,7 @@ def call_gemini(
         ":generateContent"
     )
 
-
     contents = []
-
 
     if system_prompt:
 
@@ -330,7 +311,6 @@ def call_gemini(
 
         })
 
-
     contents.append({
 
         "role":
@@ -344,7 +324,6 @@ def call_gemini(
         }]
 
     })
-
 
     payload = {
 
@@ -360,7 +339,6 @@ def call_gemini(
 
     }
 
-
     if json_mode:
 
         payload[
@@ -369,14 +347,12 @@ def call_gemini(
             "responseMimeType"
         ] = "application/json"
 
-
     headers = {
 
         "Content-Type":
             "application/json"
 
     }
-
 
     response = requests.post(
 
@@ -395,7 +371,6 @@ def call_gemini(
 
     )
 
-
     if not response.ok:
 
         raise RuntimeError(
@@ -403,9 +378,7 @@ def call_gemini(
             f"{response.text[:500]}"
         )
 
-
     data = response.json()
-
 
     return data[
         "candidates"
@@ -423,7 +396,117 @@ def call_gemini(
 
 
 # ============================================================
-# AI Router
+# PROVIDER STATUS
+# ============================================================
+
+_PROVIDER_FAILURES = {
+
+    "OpenRouter": 0,
+    "Groq": 0,
+    "Gemini": 0
+
+}
+
+
+_PROVIDER_DISABLED = {
+
+    "OpenRouter": False,
+    "Groq": False,
+    "Gemini": False
+
+}
+
+
+def reset_provider_status():
+
+    global _PROVIDER_FAILURES
+    global _PROVIDER_DISABLED
+
+    _PROVIDER_FAILURES = {
+
+        "OpenRouter": 0,
+        "Groq": 0,
+        "Gemini": 0
+
+    }
+
+    _PROVIDER_DISABLED = {
+
+        "OpenRouter": False,
+        "Groq": False,
+        "Gemini": False
+
+    }
+
+
+# ============================================================
+# PROVIDER CALL
+# ============================================================
+
+def _call_provider(
+    provider_name,
+    prompt,
+    system_prompt,
+    temperature,
+    json_mode,
+    timeout
+):
+
+    if provider_name == "OpenRouter":
+
+        return call_openrouter(
+
+            prompt,
+
+            system_prompt=system_prompt,
+
+            temperature=temperature,
+
+            json_mode=json_mode,
+
+            timeout=timeout
+
+        )
+
+    if provider_name == "Groq":
+
+        return call_groq(
+
+            prompt,
+
+            system_prompt=system_prompt,
+
+            temperature=temperature,
+
+            json_mode=json_mode,
+
+            timeout=timeout
+
+        )
+
+    if provider_name == "Gemini":
+
+        return call_gemini(
+
+            prompt,
+
+            system_prompt=system_prompt,
+
+            temperature=temperature,
+
+            json_mode=json_mode,
+
+            timeout=timeout
+
+        )
+
+    raise RuntimeError(
+        f"Unknown provider: {provider_name}"
+    )
+
+
+# ============================================================
+# AI ROUTER
 # ============================================================
 
 def ask_ollama(
@@ -436,28 +519,34 @@ def ask_ollama(
 
     providers = [
 
-        (
-            "OpenRouter",
-            call_openrouter
-        ),
+        "OpenRouter",
 
-        (
-            "Groq",
-            call_groq
-        ),
+        "Groq",
 
-        (
-            "Gemini",
-            call_gemini
-        )
+        "Gemini"
 
     ]
 
-
     errors = []
 
+    for provider_name in providers:
 
-    for provider_name, provider_function in providers:
+        # ----------------------------------------------------
+        # Skip provider if already disabled
+        # ----------------------------------------------------
+
+        if _PROVIDER_DISABLED.get(
+            provider_name,
+            False
+        ):
+
+            print(
+                f"Skipping {provider_name} "
+                f"(temporarily unavailable)"
+            )
+
+            continue
+
 
         try:
 
@@ -466,17 +555,19 @@ def ask_ollama(
             )
 
 
-            result = provider_function(
+            result = _call_provider(
+
+                provider_name,
 
                 prompt,
 
-                system_prompt=system_prompt,
+                system_prompt,
 
-                temperature=temperature,
+                temperature,
 
-                json_mode=json_mode,
+                json_mode,
 
-                timeout=timeout
+                timeout
 
             )
 
@@ -484,10 +575,20 @@ def ask_ollama(
             if result:
 
                 print(
-                    f"AI success: {provider_name}"
+                    f"AI success: "
+                    f"{provider_name}"
                 )
 
+                _PROVIDER_FAILURES[
+                    provider_name
+                ] = 0
+
                 return result
+
+
+            raise RuntimeError(
+                "Provider returned empty response."
+            )
 
 
         except Exception as e:
@@ -503,6 +604,11 @@ def ask_ollama(
             )
 
 
+            _PROVIDER_FAILURES[
+                provider_name
+            ] += 1
+
+
             errors.append({
 
                 "provider":
@@ -512,6 +618,41 @@ def ask_ollama(
                     error_message
 
             })
+
+
+            # ------------------------------------------------
+            # Rate limits / quota / auth failures
+            # ------------------------------------------------
+
+            if any(
+
+                code in error_message
+
+                for code in [
+
+                    " 429",
+                    "429:",
+                    " 401",
+                    "401:",
+                    " 402",
+                    "402:",
+                    " 403",
+                    "403:"
+
+                ]
+
+            ):
+
+                _PROVIDER_DISABLED[
+                    provider_name
+                ] = True
+
+                print(
+
+                    f"{provider_name} "
+                    "disabled for this run."
+
+                )
 
 
             print(
@@ -532,7 +673,7 @@ def ask_ollama(
 
 
 # ============================================================
-# JSON Extraction
+# JSON EXTRACTION
 # ============================================================
 
 def extract_json(response):
