@@ -1,29 +1,10 @@
-import os
 import json
 import re
 
-from openai import OpenAI
-
-
-# ============================================================
-# OpenAI Client
-# ============================================================
-
-def get_client():
-
-    api_key = os.getenv(
-        "OPENAI_API_KEY"
-    )
-
-    if not api_key:
-
-        raise ValueError(
-            "OPENAI_API_KEY is not configured."
-        )
-
-    return OpenAI(
-        api_key=api_key
-    )
+from src.services.llm import (
+    ask_ollama,
+    extract_json
+)
 
 
 # ============================================================
@@ -97,6 +78,7 @@ def calculate_ats_score(
 
     score = 0
 
+
     # ========================================================
     # 1. CV Structure
     # ========================================================
@@ -104,21 +86,13 @@ def calculate_ats_score(
     standard_sections = [
 
         "summary",
-
         "professional summary",
-
         "experience",
-
         "work experience",
-
         "professional experience",
-
         "education",
-
         "skills",
-
         "certifications",
-
         "projects"
 
     ]
@@ -131,12 +105,11 @@ def calculate_ats_score(
 
             found_sections += 1
 
-    # Maximum 20 points
-
     score += min(
         found_sections * 3,
         20
     )
+
 
     # ========================================================
     # 2. Contact Information
@@ -149,6 +122,7 @@ def calculate_ats_score(
 
         score += 5
 
+
     if re.search(
         r"\+?\d[\d\s\-\(\)]{7,}",
         cv_text
@@ -156,14 +130,16 @@ def calculate_ats_score(
 
         score += 5
 
+
     # ========================================================
-    # 3. Achievement / Quantification
+    # 3. Quantification
     # ========================================================
 
     numbers = re.findall(
         r"\b\d+(?:\.\d+)?%?\b",
         cv_text
     )
+
 
     if len(numbers) >= 10:
 
@@ -177,8 +153,9 @@ def calculate_ats_score(
 
         score += 4
 
+
     # ========================================================
-    # 4. Target Job / JD Keyword Match
+    # 4. Keyword Match
     # ========================================================
 
     reference_text = (
@@ -187,13 +164,13 @@ def calculate_ats_score(
         + job_description
     ).strip()
 
+
     if reference_text:
 
         reference_words = tokenize(
             reference_text
         )
 
-        # Remove extremely generic words
 
         stop_words = {
 
@@ -220,6 +197,7 @@ def calculate_ats_score(
 
         }
 
+
         reference_words = {
 
             word
@@ -227,6 +205,7 @@ def calculate_ats_score(
             if word not in stop_words
 
         }
+
 
         if reference_words:
 
@@ -238,29 +217,41 @@ def calculate_ats_score(
 
             )
 
+
             keyword_ratio = (
-                matched /
+
+                matched
+                /
                 len(reference_words)
+
             )
+
 
             score += round(
+
                 min(
+
                     keyword_ratio * 35,
                     35
+
                 )
+
             )
 
+
     # ========================================================
-    # 5. CV Length / Content
+    # 5. CV Length
     # ========================================================
 
     if len(cv_text) >= 1500:
 
         score += 5
 
+
     if len(cv_text) >= 3000:
 
         score += 5
+
 
     # ========================================================
     # 6. Action Language
@@ -286,6 +277,7 @@ def calculate_ats_score(
 
     ]
 
+
     action_count = sum(
 
         1
@@ -293,6 +285,7 @@ def calculate_ats_score(
         if word in cv_lower
 
     )
+
 
     if action_count >= 8:
 
@@ -305,6 +298,7 @@ def calculate_ats_score(
     elif action_count >= 2:
 
         score += 3
+
 
     return min(
         score,
@@ -324,18 +318,18 @@ def generate_cv(
     conversation=""
 ):
 
-    client = get_client()
-
     prompt = f"""
 You are an expert CV writer, recruiter and ATS optimization specialist.
 
+You are working inside CareerAgent.
+
 Your task is to improve the candidate's CV.
 
-CRITICAL RULE:
+IMPORTANT FACTUAL RULES:
 
-NEVER invent or assume factual information.
+NEVER invent factual information.
 
-Do not invent:
+Do NOT invent:
 
 - employers
 - job titles
@@ -351,42 +345,57 @@ Do not invent:
 - languages
 - locations
 
-If the user requests something that is not supported by the
-original CV, do not present it as fact.
+Only use information supported by the original CV.
 
-Instead, identify it in the warnings section and leave it
-out of the factual CV unless the original CV supports it.
+You may improve wording, structure, clarity and professionalism.
+
+You may tailor wording to the target role.
+
+You may use keywords from the job description ONLY when the
+candidate's existing experience supports those keywords.
+
+If something requested by the user is not supported by the CV,
+do NOT add it as fact.
+
+Instead, mention it in the warnings array.
 
 CURRENT CV:
 ----------------
 {cv_text}
 ----------------
 
-TARGET JOB TITLE:
+TARGET JOB:
 {target_job or "Not Provided"}
 
 JOB DESCRIPTION:
+----------------
 {job_description or "Not Provided"}
+----------------
 
 USER INSTRUCTIONS:
+----------------
 {user_instructions or "No Additional Instructions"}
+----------------
 
 PREVIOUS CONVERSATION:
+----------------
 {conversation or "None"}
+----------------
+
 
 OBJECTIVES:
 
-1. Create a complete ATS-friendly CV.
+1. Create a professional ATS-friendly CV.
 
-2. Preserve the candidate's factual experience.
+2. Preserve factual experience.
 
-3. Improve wording and professionalism.
+3. Improve wording.
 
 4. Use strong action verbs.
 
-5. Make achievements more impactful without changing their facts.
+5. Improve weak bullet points.
 
-6. Preserve existing numbers and metrics.
+6. Preserve existing numbers.
 
 7. Never fabricate numbers.
 
@@ -396,44 +405,38 @@ OBJECTIVES:
 
 10. Tailor the CV to the target role when provided.
 
-11. Incorporate relevant keywords from the job description ONLY
-    when supported by the candidate's actual experience.
+11. Use relevant job-description keywords when supported.
 
-12. Improve weak bullet points.
+12. Remove unnecessary wording.
 
-13. Remove unnecessary wording.
+13. Remove repetition.
 
-14. Avoid repetition.
+14. Improve the professional summary.
 
-15. Use standard ATS-friendly section names.
+15. Improve the skills section using supported skills.
 
-16. Keep the CV concise and professional.
+16. Keep the CV concise.
 
-17. Use plain text structure.
+17. Use standard ATS-friendly section names.
 
-18. Do NOT use tables.
+18. Use plain text.
 
-19. Do NOT use columns.
+19. Do not use tables.
 
-20. Do NOT use graphics.
+20. Do not use columns.
 
-21. Do NOT use icons.
+21. Do not use graphics.
 
-22. Do NOT use emojis.
+22. Do not use icons.
 
-23. Do NOT use photos.
+23. Do not use emojis.
 
-24. Do NOT add references unless the original CV contains them.
+24. Do not add references unless already present.
 
-25. Do NOT add unsupported information.
+25. Do not add unsupported information.
 
-26. If the user asks to add skills that are not present in the
-    original CV, flag them for confirmation instead of presenting
-    them as factual experience.
 
-STRUCTURE:
-
-Use a professional structure similar to:
+CV STRUCTURE:
 
 NAME
 
@@ -451,88 +454,94 @@ CERTIFICATIONS
 
 ADDITIONAL INFORMATION
 
-Only include sections that are supported by the original CV.
+Only include sections supported by the original CV.
+
 
 BULLETS:
 
-Use bullet points for responsibilities and achievements.
+Use bullet points for experience.
 
 Prefer:
 
-• Action + responsibility + result
+Action + responsibility + result
 
-when the information supports it.
+when the original CV supports the result.
 
-Do not invent results.
+Never invent a result.
 
-IMPORTANT:
 
-Return ONLY valid JSON.
+RETURN ONLY JSON.
 
 Use exactly this structure:
 
 {{
-    "cv_text": "...",
-    "summary": "...",
+    "cv_text": "FULL UPDATED CV HERE",
+    "summary": "SHORT DESCRIPTION OF WHAT WAS IMPROVED",
     "changes": [
-        "...",
-        "..."
+        "Change 1",
+        "Change 2",
+        "Change 3"
     ],
     "warnings": [
-        "..."
+        "Anything requiring confirmation"
     ]
 }}
 """
 
-    response = client.chat.completions.create(
 
-        model="gpt-4o-mini",
+    system_prompt = """
+You are CareerAgent's CV optimization engine.
 
-        temperature=0.2,
+Accuracy is more important than creativity.
 
-        response_format={
-            "type": "json_object"
-        },
+Never fabricate candidate information.
 
-        messages=[
+Return valid JSON only.
 
-            {
-                "role": "system",
+Do not include markdown outside the JSON.
+"""
 
-                "content":
-                    "You are an expert ATS CV optimization specialist. "
-                    "Accuracy is more important than creativity."
-            },
 
-            {
-                "role": "user",
+    # ========================================================
+    # Ask Local Ollama AI
+    # ========================================================
 
-                "content": prompt
-            }
+    content = ask_ollama(
 
-        ]
+        prompt,
+
+        system_prompt=system_prompt,
+
+        temperature=0.1,
+
+        json_mode=True
 
     )
 
-    content = (
-        response
-        .choices[0]
-        .message
-        .content
-    )
 
-    data = json.loads(
+    # ========================================================
+    # Extract JSON
+    # ========================================================
+
+    data = extract_json(
         content
     )
+
+
+    # ========================================================
+    # CV Result
+    # ========================================================
 
     cv_result = data.get(
         "cv_text",
         ""
     )
 
+
     if not cv_result:
 
         cv_result = cv_text
+
 
     return {
 
@@ -582,6 +591,7 @@ def optimize_cv(
 
     )
 
+
     result = generate_cv(
 
         cv_text,
@@ -596,6 +606,7 @@ def optimize_cv(
 
     )
 
+
     after_score = calculate_ats_score(
 
         result["cv_text"],
@@ -606,13 +617,18 @@ def optimize_cv(
 
     )
 
+
     result["before_score"] = before_score
 
     result["after_score"] = after_score
 
     result["score_change"] = (
-        after_score -
+
+        after_score
+        -
         before_score
+
     )
+
 
     return result

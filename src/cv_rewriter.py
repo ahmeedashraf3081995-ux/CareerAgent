@@ -10,7 +10,6 @@ MATCH_FILE = "data/profile/match_report.json"
 OUTPUT_FILE = "data/profile/tailored_cv_v2.json"
 
 
-
 def load_json(path):
 
     with open(
@@ -20,7 +19,6 @@ def load_json(path):
     ) as file:
 
         return json.load(file)
-
 
 
 def ask_qwen(prompt):
@@ -53,50 +51,39 @@ def ask_qwen(prompt):
 
     )
 
-
     response.raise_for_status()
 
     return response.json()["response"]
 
 
-
 def clean_json_response(text):
 
     """
-    Removes markdown or extra text if AI adds it
+    Removes markdown or extra text if AI adds it.
     """
 
     text = text.strip()
 
-
     if "```json" in text:
 
         text = text.replace("```json", "")
-
         text = text.replace("```", "")
-
 
     if "```" in text:
 
         text = text.replace("```", "")
 
-
     start = text.find("{")
-
     end = text.rfind("}")
-
 
     if start != -1 and end != -1:
 
-        text = text[start:end+1]
-
+        text = text[start:end + 1]
 
     return text.strip()
 
 
-
 def rewrite_cv(profile, job, match):
-
 
     prompt = f"""
 
@@ -133,76 +120,59 @@ Match Report:
 {json.dumps(match, indent=2)}
 
 
-
 Return exactly this JSON structure:
 
-
 {{
-"target_job_title":"",
+    "target_job_title": "",
 
-"professional_summary":"",
+    "professional_summary": "",
 
-"skills_section":[
-""
-],
+    "skills_section": [
+        ""
+    ],
 
-"experience":[
+    "experience": [
+        {{
+            "company": "",
+            "role": "",
+            "rewritten_bullets": [
+                ""
+            ]
+        }}
+    ],
 
-    {{
-        "company":"",
-        "role":"",
-        "rewritten_bullets":[
-            ""
-        ]
-    }}
-
-],
-
-"keywords_added":[
-""
-]
-
+    "keywords_added": [
+        ""
+    ]
 }}
 
 """
 
-
     result = ask_qwen(prompt)
 
-
     print("\nRAW AI RESPONSE:\n")
-
     print(result)
 
-
     cleaned = clean_json_response(result)
-
 
     return json.loads(cleaned)
 
 
-
-
 if __name__ == "__main__":
-
 
     profile = load_json(
         PROFILE_FILE
     )
 
-
     job = load_json(
         JOB_FILE
     )
-
 
     match = load_json(
         MATCH_FILE
     )
 
-
     print("Rewriting CV...")
-
 
     tailored_cv = rewrite_cv(
         profile,
@@ -210,9 +180,7 @@ if __name__ == "__main__":
         match
     )
 
-
     print("\nTAILORED CV:\n")
-
 
     print(
         json.dumps(
@@ -222,12 +190,10 @@ if __name__ == "__main__":
         )
     )
 
-
     os.makedirs(
         os.path.dirname(OUTPUT_FILE),
         exist_ok=True
     )
-
 
     with open(
         OUTPUT_FILE,
@@ -241,6 +207,5 @@ if __name__ == "__main__":
             indent=4,
             ensure_ascii=False
         )
-
 
     print("\nTailored CV V2 saved successfully")

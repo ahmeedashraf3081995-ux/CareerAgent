@@ -1,12 +1,18 @@
+# Environment
+.env
+.env.*
+
+# Virtual environment
+.venv/
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
 
-.env
-
-saved_jobs.json
-
+# IDE
 .vscode/
-
 .idea/
 
-.venv/
+# Application data
+saved_jobs.json

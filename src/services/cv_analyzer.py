@@ -1,237 +1,158 @@
-import re
+from src.services.llm import (
+    ask_ollama,
+    extract_json
+)
 
 
-
-def clean_title(title):
-
-    title = title.strip()
-
-    title = re.sub(
-        r"\s+",
-        " ",
-        title
-    )
-
-    return title
-
-
+# ============================================================
+# AI CV Analyzer
+# ============================================================
 
 def analyze_cv(text):
 
+    if not text:
 
-    text_lower = text.lower()
+        return {
 
+            "job_titles": [],
 
+            "countries": [],
 
-    job_titles = []
+            "cities": [],
 
+            "companies": [],
 
+            "skills": [],
 
-    # =====================================
-    # Extract real experience titles
-    # =====================================
+            "years_experience": 0,
 
-    title_patterns = [
+            "industries": []
 
+        }
 
-        r"(assistant manager[^|\n]*)",
-        r"(senior planner[^|\n]*)",
-        r"(regional demand planning lead[^|\n]*)",
-        r"(demand planning lead[^|\n]*)",
-        r"(supply chain analyst[^|\n]*)",
-        r"(supply planner[^|\n]*)",
-        r"(demand planner[^|\n]*)",
-        r"(planning manager[^|\n]*)",
-        r"(material requirement planning[^|\n]*)",
-        r"(material planning engineer[^|\n]*)"
 
+    prompt = f"""
+Analyze the following CV as an expert recruiter.
 
-    ]
+Your job is to identify realistic job-search criteria based
+ONLY on information actually present in the CV.
 
+Do not invent information.
 
+Identify:
 
-    for pattern in title_patterns:
+1. Current and previous job titles.
+2. Reasonable target job titles based on the candidate's actual
+   experience.
+3. Countries explicitly appearing in the CV.
+4. Cities explicitly appearing in the CV.
+5. Companies explicitly appearing in the CV.
+6. Professional skills explicitly supported by the CV.
+7. Approximate years of professional experience if clearly
+   supported.
+8. Industries supported by the CV.
 
+IMPORTANT:
 
-        matches = re.findall(
-            pattern,
-            text_lower
-        )
+- Do not invent employers.
+- Do not invent job titles.
+- Do not invent locations.
+- Do not infer a country merely because a company is famous there.
+- Target roles should be realistic extensions of the candidate's
+  existing experience.
+- Return concise values.
+- Avoid duplicate values.
 
+CV:
+----------------
+{text}
+----------------
 
-        for match in matches:
+Return ONLY valid JSON using exactly:
 
+{{
+    "job_titles": [],
+    "countries": [],
+    "cities": [],
+    "companies": [],
+    "skills": [],
+    "years_experience": 0,
+    "industries": []
+}}
+"""
 
-            title = clean_title(
-                match
-            )
 
+    system_prompt = """
+You are CareerAgent's CV analysis engine.
 
-            if len(title) > 5:
+Accuracy is more important than creativity.
 
-                job_titles.append(
-                    title.title()
-                )
+Never fabricate candidate information.
 
+Return valid JSON only.
+"""
 
 
-    # =====================================
-    # Add recommended roles
-    # only from strong evidence
-    # =====================================
+    response = ask_ollama(
 
+        prompt,
 
-    if (
-        "forecast" in text_lower
-        and "inventory" in text_lower
-    ):
+        system_prompt=system_prompt,
 
-        job_titles.append(
-            "Demand Planner"
-        )
+        temperature=0.1,
 
+        json_mode=True
 
-    if (
-        "supply planning" in text_lower
-        or "supply planner" in text_lower
-    ):
+    )
 
-        job_titles.append(
-            "Supply Planner"
-        )
 
-
-    if (
-        "inventory optimization" in text_lower
-        or "stock level" in text_lower
-    ):
-
-        job_titles.append(
-            "Inventory Planner"
-        )
-
-
-    if (
-        "otb" in text_lower
-        or "merchandising" in text_lower
-    ):
-
-        job_titles.append(
-            "Merchandise Planner"
-        )
-
-
-
-    # =====================================
-    # Remove bad generic titles
-    # =====================================
-
-    blacklist = [
-
-        "Manager",
-        "Senior Specialist",
-        "Director",
-        "Analyst"
-
-    ]
-
-
-    job_titles = [
-
-        x for x in job_titles
-        if x not in blacklist
-
-    ]
-
-
-
-    # Limit results
-
-    job_titles = list(
-        dict.fromkeys(
-            job_titles
-        )
-    )[:8]
-
-
-
-    # =====================================
-    # Countries
-    # =====================================
-
-    countries=[]
-
-
-    country_map = {
-
-        "uae":"UAE",
-        "dubai":"UAE",
-        "abu dhabi":"UAE",
-
-        "saudi":"Saudi Arabia",
-        "riyadh":"Saudi Arabia",
-
-        "qatar":"Qatar",
-        "doha":"Qatar",
-
-        "egypt":"Egypt",
-        "cairo":"Egypt",
-
-        "uk":"United Kingdom",
-        "london":"United Kingdom"
-
-    }
-
-
-
-    for key,value in country_map.items():
-
-        if key in text_lower:
-
-            if value not in countries:
-
-                countries.append(value)
-
-
-
-    # =====================================
-    # Cities
-    # =====================================
-
-    cities=[]
-
-
-    city_map = {
-
-        "dubai":"Dubai",
-        "abu dhabi":"Abu Dhabi",
-        "riyadh":"Riyadh",
-        "jeddah":"Jeddah",
-        "doha":"Doha",
-        "cairo":"Cairo",
-        "london":"London"
-
-    }
-
-
-
-    for key,value in city_map.items():
-
-        if key in text_lower:
-
-            if value not in cities:
-
-                cities.append(value)
-
+    data = extract_json(
+        response
+    )
 
 
     return {
 
+        "job_titles":
+            data.get(
+                "job_titles",
+                []
+            ),
 
-        "job_titles": job_titles,
+        "countries":
+            data.get(
+                "countries",
+                []
+            ),
 
-        "countries": countries,
+        "cities":
+            data.get(
+                "cities",
+                []
+            ),
 
-        "cities": cities
+        "companies":
+            data.get(
+                "companies",
+                []
+            ),
+
+        "skills":
+            data.get(
+                "skills",
+                []
+            ),
+
+        "years_experience":
+            data.get(
+                "years_experience",
+                0
+            ),
+
+        "industries":
+            data.get(
+                "industries",
+                []
+            )
 
     }
