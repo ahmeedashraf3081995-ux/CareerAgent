@@ -4,7 +4,6 @@ import time
 import shutil
 import os
 import re
-from datetime import datetime, timedelta
 
 
 # ============================================================
@@ -16,8 +15,8 @@ def launch_browser(playwright):
     """
     Launch Chromium.
 
-    Streamlit Cloud / Linux:
-        Use system Chromium installed through packages.txt.
+    Linux / Streamlit Cloud:
+        Use installed Chromium when available.
 
     Windows:
         Use Playwright's bundled Chromium.
@@ -25,20 +24,12 @@ def launch_browser(playwright):
 
     system_chromium = None
 
-    # ========================================================
-    # Linux / Streamlit Cloud
-    # ========================================================
-
     if os.name != "nt":
 
         possible_browsers = [
-
             "chromium",
-
             "chromium-browser",
-
             "google-chrome"
-
         ]
 
         for browser_name in possible_browsers:
@@ -53,10 +44,6 @@ def launch_browser(playwright):
 
                 break
 
-    # ========================================================
-    # System Chromium
-    # ========================================================
-
     if system_chromium:
 
         print(
@@ -70,24 +57,14 @@ def launch_browser(playwright):
             executable_path=system_chromium,
 
             args=[
-
                 "--no-sandbox",
-
                 "--disable-dev-shm-usage",
-
                 "--disable-gpu",
-
                 "--disable-setuid-sandbox",
-
                 "--disable-software-rasterizer"
-
             ]
 
         )
-
-    # ========================================================
-    # Playwright Chromium
-    # ========================================================
 
     print(
         "Using Playwright Chromium."
@@ -98,51 +75,107 @@ def launch_browser(playwright):
         headless=True,
 
         args=[
-
             "--no-sandbox",
-
             "--disable-dev-shm-usage",
-
             "--disable-gpu"
-
         ]
 
     )
 
 
 # ============================================================
-# Parse LinkedIn Posted Date
+# Helpers
 # ============================================================
 
-def parse_posted_date(posted_text):
+def normalize_posted_date(text):
+
+    if not text:
+        return ""
+
+    return re.sub(
+        r"\s+",
+        " ",
+        str(text)
+    ).strip().lower()
+
+
+def is_recent_job(
+    posted_date,
+    posted_days
+):
 
     """
-    Convert LinkedIn date text into a datetime.
+    Secondary safety filter.
 
-    Examples:
+    LinkedIn f_TPR is the primary date filter.
 
-        "1 day ago"
-        "2 days ago"
-        "1 week ago"
-        "2 weeks ago"
-        "3 hours ago"
-        "30 minutes ago"
-        "just now"
-        "today"
-        "yesterday"
+    This prevents old jobs from slipping through if
+    LinkedIn returns a stale card.
     """
 
-    if not posted_text:
+    if not posted_days:
+        return True
 
-        return None
+    if not posted_date:
+        return True
 
-    text = (
-        str(posted_text)
-        .lower()
-        .strip()
+    text = normalize_posted_date(
+        posted_date
     )
 
-    # Remove extra whitespace
+    numbers = re.findall(
+        r"\d+",
+        text
+    )
+
+    number = (
+        int(numbers[0])
+        if numbers
+        else 1
+    )
+
+    if "minute" in text:
+        age_days = 0
+
+    elif "hour" in text:
+        age_days = 0
+
+    elif "day" in text:
+        age_days = number
+
+    elif "week" in text:
+        age_days = number * 7
+
+    elif "month" in text:
+        age_days = number * 30
+
+    elif "year" in text:
+        age_days = number * 365
+
+    elif "just now" in text:
+        age_days = 0
+
+    elif "today" in text:
+        age_days = 0
+
+    else:
+        return True
+
+    return age_days <= int(posted_days)
+
+
+def normalize_title(text):
+
+    if not text:
+        return ""
+
+    text = str(text).lower()
+
+    text = re.sub(
+        r"[^a-z0-9\s&/-]",
+        " ",
+        text
+    )
 
     text = re.sub(
         r"\s+",
@@ -150,275 +183,200 @@ def parse_posted_date(posted_text):
         text
     )
 
-    now = datetime.now()
-
-    # ========================================================
-    # Just now
-    # ========================================================
-
-    if (
-        "just now" in text
-        or
-        "moments ago" in text
-    ):
-
-        return now
-
-    # ========================================================
-    # Today
-    # ========================================================
-
-    if text == "today":
-
-        return now
-
-    # ========================================================
-    # Yesterday
-    # ========================================================
-
-    if text == "yesterday":
-
-        return now - timedelta(
-            days=1
-        )
-
-    # ========================================================
-    # Minutes
-    # ========================================================
-
-    match = re.search(
-        r"(\d+)\s*(minute|minutes|min|mins)\s*ago",
-        text
-    )
-
-    if match:
-
-        minutes = int(
-            match.group(1)
-        )
-
-        return now - timedelta(
-            minutes=minutes
-        )
-
-    # ========================================================
-    # Hours
-    # ========================================================
-
-    match = re.search(
-        r"(\d+)\s*(hour|hours|hr|hrs)\s*ago",
-        text
-    )
-
-    if match:
-
-        hours = int(
-            match.group(1)
-        )
-
-        return now - timedelta(
-            hours=hours
-        )
-
-    # ========================================================
-    # Days
-    # ========================================================
-
-    match = re.search(
-        r"(\d+)\s*(day|days)\s*ago",
-        text
-    )
-
-    if match:
-
-        days = int(
-            match.group(1)
-        )
-
-        return now - timedelta(
-            days=days
-        )
-
-    # ========================================================
-    # Weeks
-    # ========================================================
-
-    match = re.search(
-        r"(\d+)\s*(week|weeks)\s*ago",
-        text
-    )
-
-    if match:
-
-        weeks = int(
-            match.group(1)
-        )
-
-        return now - timedelta(
-            weeks=weeks
-        )
-
-    # ========================================================
-    # Months
-    # ========================================================
-
-    match = re.search(
-        r"(\d+)\s*(month|months)\s*ago",
-        text
-    )
-
-    if match:
-
-        months = int(
-            match.group(1)
-        )
-
-        return now - timedelta(
-            days=months * 30
-        )
-
-    # ========================================================
-    # Years
-    # ========================================================
-
-    match = re.search(
-        r"(\d+)\s*(year|years)\s*ago",
-        text
-    )
-
-    if match:
-
-        years = int(
-            match.group(1)
-        )
-
-        return now - timedelta(
-            days=years * 365
-        )
-
-    # ========================================================
-    # Unknown format
-    # ========================================================
-
-    return None
+    return text.strip()
 
 
-# ============================================================
-# Check Date Filter
-# ============================================================
-
-def is_within_posted_days(
-    posted_text,
-    posted_days
+def title_matches(
+    title,
+    keywords
 ):
 
     """
-    Returns:
+    Check whether a LinkedIn job title matches
+    one of the requested titles.
 
-        True  = job should be kept
-        False = job should be removed
-
-    Important:
-        If LinkedIn gives an unknown date format,
-        we KEEP the job rather than accidentally deleting it.
+    Used only when a broad location/date search
+    is requested.
     """
 
-    # ========================================================
-    # No filter
-    # ========================================================
-
-    if not posted_days:
-
+    if not keywords:
         return True
 
-    try:
-
-        posted_days = int(
-            posted_days
-        )
-
-    except Exception:
-
-        return True
-
-    if posted_days <= 0:
-
-        return True
-
-    # ========================================================
-    # Parse date
-    # ========================================================
-
-    posted_datetime = parse_posted_date(
-        posted_text
+    normalized_title = normalize_title(
+        title
     )
 
-    # ========================================================
-    # Unknown date
-    # ========================================================
+    for keyword in keywords:
 
-    if posted_datetime is None:
-
-        print(
-            f"WARNING: Could not parse LinkedIn date: "
-            f"'{posted_text}'"
+        normalized_keyword = normalize_title(
+            keyword
         )
 
-        # Keep it because we don't want to
-        # accidentally remove valid jobs.
+        if not normalized_keyword:
+            continue
 
-        return True
+        if normalized_keyword in normalized_title:
+            return True
 
-    # ========================================================
-    # Compare
-    # ========================================================
+    return False
 
-    cutoff = (
-        datetime.now()
-        -
-        timedelta(
-            days=posted_days
-        )
+
+def extract_card_data(
+    card
+):
+
+    """
+    Extract only lightweight information from a
+    LinkedIn search card.
+
+    IMPORTANT:
+    This does NOT open the individual job page.
+    """
+
+    title = card.locator(
+        ".base-search-card__title"
+    ).inner_text(
+        timeout=5000
+    ).strip()
+
+    company = card.locator(
+        ".base-search-card__subtitle"
+    ).inner_text(
+        timeout=5000
+    ).strip()
+
+    location_text = card.locator(
+        ".job-search-card__location"
+    ).inner_text(
+        timeout=5000
+    ).strip()
+
+    link = card.locator(
+        "a"
+    ).first.get_attribute(
+        "href"
     )
 
-    return posted_datetime >= cutoff
+    posted_date = ""
+
+    date_selectors = [
+
+        "time",
+
+        ".job-search-card__listdate",
+
+        ".job-search-card__listdate--new"
+
+    ]
+
+    for selector in date_selectors:
+
+        try:
+
+            date_element = card.locator(
+                selector
+            ).first
+
+            if date_element.count() > 0:
+
+                posted_date = (
+                    date_element
+                    .inner_text(
+                        timeout=2000
+                    )
+                    .strip()
+                )
+
+                if posted_date:
+                    break
+
+        except Exception:
+
+            continue
+
+    return {
+
+        "job_title":
+            title,
+
+        "company":
+            company,
+
+        "location":
+            location_text,
+
+        "url":
+            link,
+
+        "source":
+            "LinkedIn",
+
+        "posted_date":
+            posted_date,
+
+        "description":
+            ""
+
+    }
 
 
 # ============================================================
-# LinkedIn Job Search
+# LinkedIn Search
 # ============================================================
 
 def scrape_linkedin(
     keyword="Demand Planner",
     location="Dubai",
     pages=1,
-    posted_days=None
+    posted_days=None,
+    title_filter=None
 ):
 
-    print(
-        ""
-    )
+    """
+    Search LinkedIn jobs.
 
+    Pipeline:
+
+        LOCATION
+            ↓
+        DATE FILTER
+            ↓
+        TITLE SEARCH
+            ↓
+        SECONDARY DATE VALIDATION
+            ↓
+        RETURN LIGHTWEIGHT JOB CARDS
+
+    Individual job descriptions are NOT opened here.
+    """
+
+    print("")
     print(
         "=================================================="
     )
 
     print(
-        f"Searching LinkedIn: "
-        f"{keyword} - {location}"
+        "LINKEDIN SEARCH"
+    )
+
+    print(
+        f"Location: {location}"
+    )
+
+    print(
+        f"Keyword: {keyword}"
     )
 
     if posted_days:
 
         print(
-            f"LinkedIn date filter: "
-            f"last {posted_days} days"
+            f"Date: LAST {posted_days} DAYS"
         )
 
     else:
 
         print(
-            "LinkedIn date filter: Any time"
+            "Date: ANY TIME"
         )
 
     print(
@@ -428,10 +386,6 @@ def scrape_linkedin(
     jobs = []
 
     seen = set()
-
-    filtered_out = 0
-
-    unknown_dates = 0
 
     with sync_playwright() as p:
 
@@ -448,22 +402,32 @@ def scrape_linkedin(
 
         try:
 
-            for page_number in range(pages):
+            for page_number in range(
+                pages
+            ):
 
-                start = page_number * 25
+                start = (
+                    page_number
+                    * 25
+                )
 
                 # ====================================================
                 # LinkedIn URL
                 # ====================================================
 
                 url = (
-                    "https://www.linkedin.com/jobs/search/?keywords="
+                    "https://www.linkedin.com/jobs/search/?"
+                    "keywords="
                     +
-                    urllib.parse.quote(keyword)
+                    urllib.parse.quote(
+                        keyword
+                    )
                     +
                     "&location="
                     +
-                    urllib.parse.quote(location)
+                    urllib.parse.quote(
+                        location
+                    )
                     +
                     "&start="
                     +
@@ -471,24 +435,19 @@ def scrape_linkedin(
                 )
 
                 # ====================================================
-                # LinkedIn Server-Side Date Filter
+                # DATE FILTER
                 # ====================================================
 
                 if posted_days:
 
                     seconds = (
-
                         int(posted_days)
-
                         *
                         24
-
                         *
                         60
-
                         *
                         60
-
                     )
 
                     url += (
@@ -497,13 +456,10 @@ def scrape_linkedin(
                         str(seconds)
                     )
 
-                print(
-                    ""
-                )
-
+                print("")
                 print(
                     f"Opening LinkedIn page "
-                    f"{page_number + 1}"
+                    f"{page_number + 1}/{pages}"
                 )
 
                 print(
@@ -527,12 +483,13 @@ def scrape_linkedin(
 
                     print(
                         "Page loading timeout:",
-                        repr(e)
+                        e
                     )
 
                     continue
 
-                time.sleep(1)
+                # Short wait only.
+                time.sleep(0.7)
 
                 cards = page.locator(
                     ".base-search-card"
@@ -545,239 +502,138 @@ def scrape_linkedin(
                     count
                 )
 
-                for i in range(count):
+                if count == 0:
+
+                    print(
+                        "No cards found. "
+                        "Stopping pagination."
+                    )
+
+                    break
+
+                page_added = 0
+
+                for i in range(
+                    count
+                ):
 
                     try:
 
                         card = cards.nth(i)
 
-                        # ====================================================
-                        # Title
-                        # ====================================================
-
-                        title = card.locator(
-                            ".base-search-card__title"
-                        ).inner_text(
-                            timeout=5000
-                        ).strip()
-
-                        # ====================================================
-                        # Company
-                        # ====================================================
-
-                        company = card.locator(
-                            ".base-search-card__subtitle"
-                        ).inner_text(
-                            timeout=5000
-                        ).strip()
-
-                        # ====================================================
-                        # Location
-                        # ====================================================
-
-                        location_text = card.locator(
-                            ".job-search-card__location"
-                        ).inner_text(
-                            timeout=5000
-                        ).strip()
-
-                        # ====================================================
-                        # URL
-                        # ====================================================
-
-                        link = card.locator(
-                            "a"
-                        ).first.get_attribute(
-                            "href"
+                        job = extract_card_data(
+                            card
                         )
 
-                        # ====================================================
-                        # Posted Date
-                        # ====================================================
+                        title = job.get(
+                            "job_title",
+                            ""
+                        )
 
-                        posted_date = ""
+                        company = job.get(
+                            "company",
+                            ""
+                        )
 
-                        date_selectors = [
+                        location_text = job.get(
+                            "location",
+                            ""
+                        )
 
-                            "time",
+                        posted_date = job.get(
+                            "posted_date",
+                            ""
+                        )
 
-                            ".job-search-card__listdate",
+                        # =================================================
+                        # TITLE FILTER
+                        # =================================================
 
-                            ".job-search-card__listdate--new"
+                        if title_filter:
 
-                        ]
-
-                        for selector in date_selectors:
-
-                            try:
-
-                                date_element = card.locator(
-                                    selector
-                                ).first
-
-                                if date_element.count() > 0:
-
-                                    posted_date = (
-
-                                        date_element
-
-                                        .inner_text(
-                                            timeout=2000
-                                        )
-
-                                        .strip()
-
-                                    )
-
-                                    if posted_date:
-
-                                        break
-
-                            except Exception:
+                            if not title_matches(
+                                title,
+                                title_filter
+                            ):
 
                                 continue
 
-                        # ====================================================
-                        # HARD PYTHON DATE FILTER
-                        # ====================================================
+                        # =================================================
+                        # SECONDARY DATE FILTER
+                        # =================================================
 
                         if posted_days:
 
-                            parsed_date = parse_posted_date(
-                                posted_date
-                            )
+                            if not is_recent_job(
+                                posted_date,
+                                posted_days
+                            ):
 
-                            if parsed_date is None:
+                                print(
+                                    f"Skipping old job: "
+                                    f"{title} | "
+                                    f"{posted_date}"
+                                )
 
-                                unknown_dates += 1
+                                continue
 
-                            else:
-
-                                if not is_within_posted_days(
-
-                                    posted_date,
-
-                                    posted_days
-
-                                ):
-
-                                    filtered_out += 1
-
-                                    print(
-
-                                        f"FILTERED OUT: "
-                                        f"{title} | "
-                                        f"{posted_date}"
-
-                                    )
-
-                                    continue
-
-                        # ====================================================
-                        # Duplicate Check
-                        # ====================================================
+                        # =================================================
+                        # DUPLICATE
+                        # =================================================
 
                         key = (
 
-                            title.lower()
+                            title.lower().strip()
 
-                            +
+                            + "|"
 
-                            company.lower()
+                            + company.lower().strip()
 
-                            +
+                            + "|"
 
-                            location_text.lower()
+                            + location_text.lower().strip()
 
                         )
 
                         if key in seen:
-
                             continue
 
                         seen.add(
                             key
                         )
 
-                        # ====================================================
-                        # Save Job
-                        # ====================================================
+                        jobs.append(
+                            job
+                        )
 
-                        jobs.append({
-
-                            "job_title":
-                                title,
-
-                            "company":
-                                company,
-
-                            "location":
-                                location_text,
-
-                            "url":
-                                link,
-
-                            "source":
-                                "LinkedIn",
-
-                            "posted_date":
-                                posted_date,
-
-                            "description":
-                                ""
-
-                        })
+                        page_added += 1
 
                     except Exception as e:
 
                         print(
                             "Card skipped:",
-                            repr(e)
+                            e
                         )
+
+                print(
+                    f"Jobs accepted from page: "
+                    f"{page_added}"
+                )
 
         except Exception as e:
 
             print(
                 "LinkedIn scraper error:",
-                repr(e)
+                e
             )
 
         finally:
 
             browser.close()
 
-    # ============================================================
-    # Statistics
-    # ============================================================
-
+    print("")
     print(
-        ""
-    )
-
-    print(
-        "=================================================="
-    )
-
-    print(
-        "LINKEDIN SCRAPER COMPLETED"
-    )
-
-    print(
-        f"Jobs kept: {len(jobs)}"
-    )
-
-    print(
-        f"Jobs removed by date filter: "
-        f"{filtered_out}"
-    )
-
-    print(
-        f"Unknown date formats: "
-        f"{unknown_dates}"
-    )
-
-    print(
-        "=================================================="
+        f"Total jobs collected: {len(jobs)}"
     )
 
     return jobs
@@ -787,7 +643,18 @@ def scrape_linkedin(
 # Extract Job Description
 # ============================================================
 
-def extract_job_details(url):
+def extract_job_details(
+    url
+):
+
+    """
+    Open an individual LinkedIn job page.
+
+    This is intentionally separated from search scraping.
+
+    It should only be called AFTER all lightweight
+    filters have been completed.
+    """
 
     if not url:
 
@@ -880,7 +747,7 @@ def extract_job_details(url):
 
             print(
                 "Job detail error:",
-                repr(e)
+                e
             )
 
             description = ""

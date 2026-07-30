@@ -11,32 +11,43 @@ from src.services.job_pre_filter import pre_filter_jobs
 def clean_jobs(jobs):
 
     unique = []
+
     seen = set()
 
     for job in jobs:
 
         key = (
+
             job.get(
                 "job_title",
                 ""
             ).lower().strip()
+
             + "|"
+
             + job.get(
                 "company",
                 ""
             ).lower().strip()
+
             + "|"
+
             + job.get(
                 "location",
                 ""
             ).lower().strip()
+
         )
 
         if key not in seen:
 
-            seen.add(key)
+            seen.add(
+                key
+            )
 
-            unique.append(job)
+            unique.append(
+                job
+            )
 
     return unique
 
@@ -50,7 +61,9 @@ def extract_job_filters(jobs):
     filters = {
 
         "titles": [],
+
         "companies": [],
+
         "locations": []
 
     }
@@ -114,11 +127,17 @@ def search_jobs(parameters):
     results = []
 
     # ========================================================
+    # STEP 1
     # Read Parameters
     # ========================================================
 
     job_titles = parameters.get(
         "job_titles",
+        []
+    )
+
+    countries = parameters.get(
+        "countries",
         []
     )
 
@@ -136,19 +155,6 @@ def search_jobs(parameters):
         "cv_text",
         ""
     )
-
-    # ========================================================
-    # Job Posting Date Filter
-    #
-    # 1  = last 1 day
-    # 3  = last 3 days
-    # 7  = last 7 days
-    # 14 = last 14 days
-    # 30 = last 30 days
-    # 0  = any time
-    #
-    # Default = 7 days
-    # ========================================================
 
     posted_days = parameters.get(
         "posted_days",
@@ -169,32 +175,8 @@ def search_jobs(parameters):
 
         posted_days = 0
 
-    print(
-        "=================================================="
-    )
-
-    print(
-        "JOB SEARCH DATE FILTER"
-    )
-
-    if posted_days > 0:
-
-        print(
-            f"Requested: Last {posted_days} days"
-        )
-
-    else:
-
-        print(
-            "Requested: Any time"
-        )
-
-    print(
-        "=================================================="
-    )
-
     # ========================================================
-    # Default Search Titles
+    # DEFAULT TITLES
     # ========================================================
 
     if not job_titles:
@@ -208,140 +190,250 @@ def search_jobs(parameters):
         ]
 
     # ========================================================
-    # Expand Titles
+    # EXPAND TITLES
     # ========================================================
 
     job_titles = expand_titles(
         job_titles
     )
 
-    print(
-        "Expanded titles:"
-    )
+    # ========================================================
+    # DEFAULT COUNTRY
+    # ========================================================
 
-    print(
-        job_titles
-    )
+    if not countries:
+
+        countries = [
+
+            "United Arab Emirates"
+
+        ]
 
     # ========================================================
-    # Default Cities
+    # DEFAULT CITY
     # ========================================================
 
     if not cities:
 
         cities = [
+
             "Dubai"
+
         ]
 
     # ========================================================
-    # LinkedIn Search
+    # LOG PIPELINE
     # ========================================================
 
-    for title in job_titles:
-
-        for city in cities:
-
-            print(
-                ""
-            )
-
-            print(
-                "=================================================="
-            )
-
-            print(
-                f"Searching: {title} - {city}"
-            )
-
-            print(
-                "=================================================="
-            )
-
-            try:
-
-                jobs = scrape_linkedin(
-
-                    keyword=title,
-
-                    location=city,
-
-                    pages=5,
-
-                    posted_days=posted_days
-
-                )
-
-            except Exception as e:
-
-                print(
-                    f"LinkedIn search failed "
-                    f"for {title} - {city}:"
-                )
-
-                print(
-                    repr(e)
-                )
-
-                continue
-
-            if not jobs:
-
-                print(
-                    "No jobs returned."
-                )
-
-                continue
-
-            # =================================================
-            # Company Filter
-            # =================================================
-
-            for job in jobs:
-
-                if companies:
-
-                    company_name = job.get(
-                        "company",
-                        ""
-                    ).lower()
-
-                    allowed = False
-
-                    for company in companies:
-
-                        if (
-                            company.lower()
-                            in
-                            company_name
-                        ):
-
-                            allowed = True
-
-                            break
-
-                    if not allowed:
-
-                        continue
-
-                results.append(
-                    job
-                )
-
-    # ========================================================
-    # Raw Jobs
-    # ========================================================
-
+    print("")
     print(
-        ""
+        "=================================================="
     )
 
     print(
-        "Raw jobs before duplicate removal:",
+        "JOB SEARCH PIPELINE"
+    )
+
+    print(
+        "=================================================="
+    )
+
+    print(
+        "1. Country:",
+        countries
+    )
+
+    print(
+        "2. City:",
+        cities
+    )
+
+    print(
+        "3. Posted:",
+        (
+            f"Last {posted_days} days"
+            if posted_days > 0
+            else "Any time"
+        )
+    )
+
+    print(
+        "4. Job titles:",
+        job_titles
+    )
+
+    print(
+        "5. Companies:",
+        companies if companies else "All"
+    )
+
+    print(
+        "=================================================="
+    )
+
+    # ========================================================
+    # COUNTRY
+    #   ↓
+    # CITY
+    #   ↓
+    # DATE
+    #   ↓
+    # TITLE
+    #
+    # We keep the LinkedIn search lightweight.
+    #
+    # No individual job page is opened here.
+    # ========================================================
+
+    for country in countries:
+
+        print("")
+        print(
+            "##################################################"
+        )
+
+        print(
+            f"COUNTRY: {country}"
+        )
+
+        print(
+            "##################################################"
+        )
+
+        for city in cities:
+
+            if country:
+
+                search_location = (
+                    f"{city}, {country}"
+                )
+
+            else:
+
+                search_location = city
+
+            print("")
+            print(
+                "--------------------------------------------------"
+            )
+
+            print(
+                f"CITY: {search_location}"
+            )
+
+            print(
+                f"DATE FILTER: "
+                f"{posted_days} days"
+            )
+
+            print(
+                "--------------------------------------------------"
+            )
+
+            # =================================================
+            # SEARCH EACH TITLE
+            #
+            # LinkedIn applies location + date server-side
+            # BEFORE returning the job cards.
+            #
+            # The browser stays lightweight and NO detail
+            # pages are opened at this stage.
+            # =================================================
+
+            for title in job_titles:
+
+                print("")
+                print(
+                    f"TITLE SEARCH: {title}"
+                )
+
+                try:
+
+                    jobs = scrape_linkedin(
+
+                        keyword=title,
+
+                        location=search_location,
+
+                        pages=5,
+
+                        posted_days=posted_days
+
+                    )
+
+                except Exception as e:
+
+                    print(
+                        f"LinkedIn search failed "
+                        f"for {title} - "
+                        f"{search_location}:",
+                        e
+                    )
+
+                    continue
+
+                if not jobs:
+
+                    print(
+                        "No jobs returned."
+                    )
+
+                    continue
+
+                print(
+                    f"Lightweight jobs returned: "
+                    f"{len(jobs)}"
+                )
+
+                # =================================================
+                # COMPANY FILTER
+                #
+                # Still no descriptions loaded.
+                # =================================================
+
+                for job in jobs:
+
+                    if companies:
+
+                        company_name = job.get(
+                            "company",
+                            ""
+                        ).lower()
+
+                        allowed = False
+
+                        for company in companies:
+
+                            if (
+                                company.lower()
+                                in company_name
+                            ):
+
+                                allowed = True
+
+                                break
+
+                        if not allowed:
+
+                            continue
+
+                    results.append(
+                        job
+                    )
+
+    # ========================================================
+    # RAW RESULTS
+    # ========================================================
+
+    print("")
+    print(
+        "Raw jobs after "
+        "country/city/date/title/company filters:",
         len(results)
     )
 
     # ========================================================
-    # Remove Duplicates
+    # REMOVE DUPLICATES
     # ========================================================
 
     results = clean_jobs(
@@ -354,7 +446,9 @@ def search_jobs(parameters):
     )
 
     # ========================================================
-    # Smart Pre Filter
+    # SMART PRE-FILTER
+    #
+    # Still happens BEFORE opening individual job pages.
     # ========================================================
 
     if cv_text and results:
@@ -375,7 +469,7 @@ def search_jobs(parameters):
 
             print(
                 "Pre-filter failed:",
-                repr(e)
+                e
             )
 
         print(
@@ -384,7 +478,20 @@ def search_jobs(parameters):
         )
 
     # ========================================================
-    # Load Job Descriptions
+    # LOAD DESCRIPTIONS
+    #
+    # THIS IS THE EXPENSIVE PART.
+    #
+    # It happens only after:
+    #
+    # Country
+    # City
+    # Date
+    # Title
+    # Company
+    # Duplicate removal
+    # Relevance filtering
+    #
     # ========================================================
 
     if results:
@@ -399,22 +506,26 @@ def search_jobs(parameters):
 
             print(
                 "Description loading failed:",
-                repr(e)
+                e
             )
 
     # ========================================================
-    # Description Statistics
+    # DESCRIPTION STATISTICS
     # ========================================================
 
     descriptions_loaded = len(
 
         [
+
             job
+
             for job in results
+
             if job.get(
                 "description",
                 ""
             )
+
         ]
 
     )
@@ -425,7 +536,7 @@ def search_jobs(parameters):
     )
 
     # ========================================================
-    # Save Filters
+    # SAVE FILTERS
     # ========================================================
 
     try:
@@ -444,17 +555,14 @@ def search_jobs(parameters):
 
         print(
             "Filter save skipped:",
-            repr(e)
+            e
         )
 
     # ========================================================
-    # Final Statistics
+    # FINAL
     # ========================================================
 
-    print(
-        ""
-    )
-
+    print("")
     print(
         "=================================================="
     )
@@ -465,11 +573,6 @@ def search_jobs(parameters):
 
     print(
         f"Final jobs: {len(results)}"
-    )
-
-    print(
-        f"Posted-days filter: "
-        f"{posted_days if posted_days > 0 else 'Any time'}"
     )
 
     print(

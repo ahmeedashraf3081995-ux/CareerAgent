@@ -1,6 +1,5 @@
 import re
 import time
-import traceback
 
 from src.services.llm import (
     ask_ollama,
@@ -9,18 +8,18 @@ from src.services.llm import (
 
 
 # ============================================================
-# CONFIGURATION
+# Configuration
 # ============================================================
 
-AI_BATCH_SIZE = 10
+AI_BATCH_SIZE = 4
 
-AI_RETRY_ATTEMPTS = 2
+AI_BATCH_RETRIES = 2
 
-AI_RETRY_DELAY = 2
+AI_SINGLE_JOB_RETRIES = 2
 
 
 # ============================================================
-# PYTHON SKILL DATABASE
+# Python Skill Database
 # ============================================================
 
 SKILL_GROUPS = {
@@ -168,7 +167,7 @@ SKILL_GROUPS = {
 
 
 # ============================================================
-# HELPERS
+# Helpers
 # ============================================================
 
 def normalize_text(text):
@@ -193,7 +192,9 @@ def contains_skill(text, keywords):
 
     for keyword in keywords:
 
-        keyword = normalize_text(keyword)
+        keyword = normalize_text(
+            keyword
+        )
 
         if not keyword:
             continue
@@ -204,11 +205,13 @@ def contains_skill(text, keywords):
                 rf"\b{re.escape(keyword)}\b",
                 text
             ):
+
                 return True
 
         else:
 
             if keyword in text:
+
                 return True
 
     return False
@@ -217,6 +220,7 @@ def contains_skill(text, keywords):
 def safe_list(value):
 
     if isinstance(value, list):
+
         return value
 
     return []
@@ -237,7 +241,9 @@ def safe_int(value, default=0):
 
 def clean_score(value):
 
-    score = safe_int(value)
+    score = safe_int(
+        value
+    )
 
     return max(
         0,
@@ -249,16 +255,19 @@ def clean_score(value):
 
 
 # ============================================================
-# PYTHON SKILL EXTRACTION
+# Python Skill Extraction
 # ============================================================
 
 def extract_python_skills(text):
 
     found = []
 
-    text = normalize_text(text)
+    text = normalize_text(
+        text
+    )
 
     if not text:
+
         return found
 
     for skill, keywords in SKILL_GROUPS.items():
@@ -276,7 +285,7 @@ def extract_python_skills(text):
 
 
 # ============================================================
-# PYTHON SKILL MATCHING
+# Python Skill Matching
 # ============================================================
 
 def calculate_skill_matching(
@@ -386,25 +395,21 @@ def calculate_skill_matching(
 
     return {
 
-        "cv_skills":
-            cv_skills,
+        "cv_skills": cv_skills,
 
-        "job_skills":
-            job_skills,
+        "job_skills": job_skills,
 
-        "matched_skills":
-            matched,
+        "matched_skills": matched,
 
-        "missing_skills":
-            missing,
+        "missing_skills": missing,
 
-        "transferable_skills":
-            transferable
+        "transferable_skills": transferable
+
     }
 
 
 # ============================================================
-# PYTHON CV ENHANCEMENT
+# Python CV Enhancement
 # ============================================================
 
 def generate_cv_enhancement(
@@ -446,6 +451,7 @@ def generate_cv_enhancement(
         "Cross-functional Collaboration",
         "Leadership",
         "Process Improvement"
+
     ]
 
     selected = []
@@ -459,6 +465,7 @@ def generate_cv_enhancement(
             )
 
         if len(selected) >= 4:
+
             break
 
     if selected:
@@ -507,7 +514,7 @@ def generate_cv_enhancement(
 
 
 # ============================================================
-# PREPARE PYTHON ANALYSIS
+# Prepare Python Analysis
 # ============================================================
 
 def prepare_python_analysis(
@@ -542,15 +549,21 @@ def prepare_python_analysis(
         )
 
         job["matched_skills"] = (
-            skill_analysis["matched_skills"]
+            skill_analysis[
+                "matched_skills"
+            ]
         )
 
         job["missing_skills"] = (
-            skill_analysis["missing_skills"]
+            skill_analysis[
+                "missing_skills"
+            ]
         )
 
         job["transferable_skills"] = (
-            skill_analysis["transferable_skills"]
+            skill_analysis[
+                "transferable_skills"
+            ]
         )
 
         job["cv_enhancement"] = (
@@ -575,7 +588,7 @@ def prepare_python_analysis(
 
 
 # ============================================================
-# PREPARE COMPACT JOB DATA FOR AI
+# Compact Job Data For AI
 # ============================================================
 
 def prepare_ai_jobs(jobs):
@@ -589,10 +602,7 @@ def prepare_ai_jobs(jobs):
                 "description",
                 ""
             )
-        )
-
-        # Keep prompt size controlled
-        description = description[:3500]
+        )[:3000]
 
         ai_jobs.append({
 
@@ -644,48 +654,55 @@ def prepare_ai_jobs(jobs):
 
 
 # ============================================================
-# BUILD AI PROMPT
+# Analyze ONE AI Batch
 # ============================================================
 
-def build_ai_prompt(
+def analyze_job_batch_with_ai(
     cv_text,
-    ai_jobs
+    jobs
 ):
 
-    return f"""
+    if not jobs:
+
+        return {}
+
+    ai_jobs = prepare_ai_jobs(
+        jobs
+    )
+
+    prompt = f"""
 You are CareerAgent's recruitment matching engine.
 
 Evaluate EVERY job in this batch against the candidate's CV.
 
-IMPORTANT RULES:
+You MUST return one result for every job.
 
-1. Analyze every single job.
-2. Return exactly one result for every job.
-3. Keep the original job index.
-4. Never invent experience.
-5. Do not assume a skill simply because it is common in the industry.
-6. Use semantic understanding, not just keyword matching.
-7. Consider the candidate's actual career progression.
-8. Consider transferable experience.
-9. Consider job title relevance.
-10. Consider seniority.
-11. Consider actual responsibilities.
-12. Consider technical requirements.
-13. Consider industry relevance.
-14. Consider leadership requirements.
-15. Consider overall career suitability.
+Do not skip jobs.
+
+Do not invent experience.
+
+Use semantic understanding.
+
+Consider:
+
+- Actual candidate experience
+- Career progression
+- Job title
+- Responsibilities
+- Seniority
+- Industry
+- Technical background
+- Leadership
+- Planning experience
+- Overall career suitability
 
 Python has already calculated:
 
-- matched_skills
-- missing_skills
-- transferable_skills
+- matched skills
+- missing skills
+- transferable skills
 
-Use these as supporting information.
-
-Do NOT simply count keywords.
-
-The final match score should represent the REALISTIC probability that this candidate is a strong applicant for the role.
+Do NOT recalculate them.
 
 --------------------------------------------------
 CANDIDATE CV
@@ -702,8 +719,6 @@ JOBS
 --------------------------------------------------
 RETURN JSON ONLY
 --------------------------------------------------
-
-Return exactly this structure:
 
 {{
     "results": [
@@ -726,195 +741,47 @@ Return exactly this structure:
     ]
 }}
 
---------------------------------------------------
-SCORING
---------------------------------------------------
+RULES:
+
+- Return ONE result for EVERY job.
+- Keep the original index.
+- Never invent experience.
+- Scores must be integers from 0 to 100.
+- Keep explanations concise.
+- Return valid JSON only.
+
+match_level:
 
 90-100 = Exceptional fit
-80-89  = Excellent fit
-70-79  = Good fit
-60-69  = Moderate fit
-50-59  = Partial fit
-0-49   = Weak fit
-
-match_level MUST be exactly one of:
-
-"Exceptional fit"
-"Excellent fit"
-"Good fit"
-"Moderate fit"
-"Partial fit"
-"Weak fit"
-
-All scores must be integers from 0 to 100.
-
-Keep explanations concise.
-
-Return valid JSON only.
+80-89 = Excellent fit
+70-79 = Good fit
+60-69 = Moderate fit
+50-59 = Partial fit
+0-49 = Weak fit
 """
-
-
-# ============================================================
-# VALIDATE AI RESULT
-# ============================================================
-
-def validate_ai_results(
-    results,
-    job_count
-):
-
-    if not isinstance(
-        results,
-        list
-    ):
-
-        return {}
-
-    analysis_map = {}
-
-    for item in results:
-
-        if not isinstance(
-            item,
-            dict
-        ):
-
-            continue
-
-        try:
-
-            index = int(
-                item.get(
-                    "index",
-                    -1
-                )
-            )
-
-        except Exception:
-
-            continue
-
-        if index < 0:
-            continue
-
-        if index >= job_count:
-            continue
-
-        # Clean numeric values
-        item["match_score"] = clean_score(
-            item.get(
-                "match_score",
-                0
-            )
-        )
-
-        item["title_match"] = clean_score(
-            item.get(
-                "title_match",
-                0
-            )
-        )
-
-        item["seniority_match"] = clean_score(
-            item.get(
-                "seniority_match",
-                0
-            )
-        )
-
-        item["industry_match"] = clean_score(
-            item.get(
-                "industry_match",
-                0
-            )
-        )
-
-        item["experience_match"] = clean_score(
-            item.get(
-                "experience_match",
-                0
-            )
-        )
-
-        item["technical_match"] = clean_score(
-            item.get(
-                "technical_match",
-                0
-            )
-        )
-
-        item["leadership_match"] = clean_score(
-            item.get(
-                "leadership_match",
-                0
-            )
-        )
-
-        item["strengths"] = safe_list(
-            item.get(
-                "strengths",
-                []
-            )
-        )
-
-        item["gaps"] = safe_list(
-            item.get(
-                "gaps",
-                []
-            )
-        )
-
-        analysis_map[index] = item
-
-    return analysis_map
-
-
-# ============================================================
-# ANALYZE ONE AI BATCH
-# ============================================================
-
-def analyze_job_batch_with_ai(
-    cv_text,
-    jobs
-):
-
-    if not jobs:
-
-        return {}
-
-    ai_jobs = prepare_ai_jobs(
-        jobs
-    )
-
-    prompt = build_ai_prompt(
-        cv_text,
-        ai_jobs
-    )
 
     system_prompt = """
 You are CareerAgent's recruitment matching engine.
 
-Your job is to evaluate candidate-job fit accurately.
-
 Accuracy is more important than generosity.
 
-Never fabricate candidate experience.
+Analyze every supplied job.
 
-Analyze every job.
+Never fabricate candidate experience.
 
 Return valid JSON only.
 """
 
     for attempt in range(
-        1,
-        AI_RETRY_ATTEMPTS + 1
+        AI_BATCH_RETRIES + 1
     ):
 
         try:
 
             print(
-                f"AI analyzing batch of {len(jobs)} jobs "
-                f"(attempt {attempt}/{AI_RETRY_ATTEMPTS})..."
+                f"AI analyzing batch of "
+                f"{len(jobs)} jobs "
+                f"(attempt {attempt + 1})..."
             )
 
             response = ask_ollama(
@@ -925,20 +792,8 @@ Return valid JSON only.
 
                 temperature=0.1,
 
-                json_mode=True,
+                json_mode=True
 
-                timeout=120
-
-            )
-
-            if not response:
-
-                raise RuntimeError(
-                    "AI returned an empty response."
-                )
-
-            print(
-                "AI batch response received."
             )
 
             data = extract_json(
@@ -959,82 +814,102 @@ Return valid JSON only.
                 []
             )
 
-            analysis_map = validate_ai_results(
-
+            if not isinstance(
                 results,
+                list
+            ):
 
-                len(jobs)
-
-            )
-
-            print(
-                f"Valid AI results: "
-                f"{len(analysis_map)}/{len(jobs)}"
-            )
-
-            # ------------------------------------------------
-            # Success
-            # ------------------------------------------------
-
-            if len(analysis_map) == len(jobs):
-
-                return analysis_map
-
-            # ------------------------------------------------
-            # Partial response
-            # ------------------------------------------------
-
-            if analysis_map:
-
-                print(
-                    "AI returned only partial results."
+                raise RuntimeError(
+                    "AI response did not contain "
+                    "a valid results list."
                 )
 
-                # Retry to try to complete the batch
-                if attempt < AI_RETRY_ATTEMPTS:
+            analysis_map = {}
 
-                    time.sleep(
-                        AI_RETRY_DELAY
-                    )
+            for item in results:
+
+                if not isinstance(
+                    item,
+                    dict
+                ):
 
                     continue
 
-                return analysis_map
+                try:
 
-            raise RuntimeError(
-                "AI returned no valid job analyses."
+                    index = int(
+                        item.get(
+                            "index",
+                            -1
+                        )
+                    )
+
+                except Exception:
+
+                    continue
+
+                if index < 0:
+
+                    continue
+
+                if index >= len(jobs):
+
+                    continue
+
+                analysis_map[
+                    index
+                ] = item
+
+            print(
+                f"Batch AI results: "
+                f"{len(analysis_map)}/{len(jobs)}"
             )
+
+            if analysis_map:
+
+                return analysis_map
 
         except Exception as e:
 
             print(
-                "AI batch failed:"
+                "AI batch attempt failed:"
             )
 
             print(
                 repr(e)
             )
 
-            if attempt < AI_RETRY_ATTEMPTS:
+            if attempt < AI_BATCH_RETRIES:
 
-                print(
-                    f"Retrying in "
-                    f"{AI_RETRY_DELAY} seconds..."
-                )
-
-                time.sleep(
-                    AI_RETRY_DELAY
-                )
-
-            else:
-
-                traceback.print_exc()
+                time.sleep(1)
 
     return {}
 
 
 # ============================================================
-# ANALYZE ALL JOBS IN BATCHES
+# Analyze Missing Jobs Individually
+# ============================================================
+
+def analyze_single_job_with_ai(
+    cv_text,
+    job
+):
+
+    result = analyze_job_batch_with_ai(
+
+        cv_text,
+
+        [job]
+
+    )
+
+    return result.get(
+        0
+    )
+
+
+# ============================================================
+# Analyze ALL Jobs
 # ============================================================
 
 def analyze_all_jobs_with_ai(
@@ -1050,14 +925,6 @@ def analyze_all_jobs_with_ai(
         jobs
     )
 
-    total_batches = (
-        total_jobs
-        +
-        AI_BATCH_SIZE
-        -
-        1
-    ) // AI_BATCH_SIZE
-
     print(
         "=================================================="
     )
@@ -1072,19 +939,23 @@ def analyze_all_jobs_with_ai(
     )
 
     print(
-        f"Expected batches: {total_batches}"
-    )
-
-    print(
         "=================================================="
     )
 
     analysis_map = {}
 
+    # ========================================================
+    # BATCH ANALYSIS
+    # ========================================================
+
     for batch_start in range(
+
         0,
+
         total_jobs,
+
         AI_BATCH_SIZE
+
     ):
 
         batch_end = min(
@@ -1107,21 +978,31 @@ def analyze_all_jobs_with_ai(
             AI_BATCH_SIZE
         ) + 1
 
-        print(
-            ""
-        )
+        total_batches = (
 
+            total_jobs
+            +
+            AI_BATCH_SIZE
+            -
+            1
+
+        ) // AI_BATCH_SIZE
+
+        print("")
         print(
             "--------------------------------------------------"
         )
 
         print(
-            f"AI BATCH {batch_number}/{total_batches}"
+            f"AI BATCH "
+            f"{batch_number}/{total_batches}"
         )
 
         print(
-            f"Jobs {batch_start + 1} "
-            f"to {batch_end}"
+            f"Jobs "
+            f"{batch_start + 1}"
+            f"-"
+            f"{batch_end}"
         )
 
         print(
@@ -1135,19 +1016,6 @@ def analyze_all_jobs_with_ai(
             )
         )
 
-        if not local_analysis:
-
-            print(
-                f"Batch {batch_number} "
-                "returned no AI results."
-            )
-
-            continue
-
-        # ----------------------------------------------------
-        # Convert local index to global index
-        # ----------------------------------------------------
-
         for local_index, analysis in (
             local_analysis.items()
         ):
@@ -1159,36 +1027,104 @@ def analyze_all_jobs_with_ai(
 
                 continue
 
-            if local_index < 0:
-                continue
-
-            if local_index >= len(
-                batch
+            if (
+                local_index < 0
+                or
+                local_index >= len(batch)
             ):
 
                 continue
 
             global_index = (
+
                 batch_start
                 +
                 local_index
+
             )
 
             analysis_map[
                 global_index
             ] = analysis
 
+    # ========================================================
+    # RETRY MISSING JOBS INDIVIDUALLY
+    # ========================================================
+
+    missing_indices = [
+
+        index
+
+        for index in range(
+            total_jobs
+        )
+
+        if index not in analysis_map
+
+    ]
+
+    print("")
     print(
-        ""
+        f"AI missing results after batches: "
+        f"{len(missing_indices)}"
     )
 
+    if missing_indices:
+
+        for index in missing_indices:
+
+            print(
+                f"Retrying AI individually: "
+                f"job {index + 1}/{total_jobs}"
+            )
+
+            analysis = None
+
+            for attempt in range(
+                AI_SINGLE_JOB_RETRIES + 1
+            ):
+
+                analysis = (
+                    analyze_single_job_with_ai(
+
+                        cv_text,
+
+                        jobs[index]
+
+                    )
+                )
+
+                if analysis:
+
+                    break
+
+                if attempt < AI_SINGLE_JOB_RETRIES:
+
+                    time.sleep(1)
+
+            if analysis:
+
+                analysis_map[
+                    index
+                ] = analysis
+
+    # ========================================================
+    # FINAL STATISTICS
+    # ========================================================
+
+    print("")
     print(
         "=================================================="
     )
 
     print(
         f"AI analysis completed: "
-        f"{len(analysis_map)}/{total_jobs} jobs"
+        f"{len(analysis_map)}/{total_jobs}"
+    )
+
+    print(
+        f"AI unavailable: "
+        f"{total_jobs - len(analysis_map)}"
     )
 
     print(
@@ -1199,70 +1135,7 @@ def analyze_all_jobs_with_ai(
 
 
 # ============================================================
-# PYTHON FALLBACK SCORE
-# ============================================================
-
-def calculate_python_fallback_score(
-    job
-):
-
-    matched = len(
-        job.get(
-            "matched_skills",
-            []
-        )
-    )
-
-    missing = len(
-        job.get(
-            "missing_skills",
-            []
-        )
-    )
-
-    transferable = len(
-        job.get(
-            "transferable_skills",
-            []
-        )
-    )
-
-    total = (
-        matched
-        +
-        missing
-    )
-
-    if total <= 0:
-
-        return 40
-
-    direct_ratio = (
-        matched
-        /
-        total
-    )
-
-    score = (
-        direct_ratio
-        *
-        80
-    )
-
-    bonus = min(
-        transferable * 5,
-        20
-    )
-
-    score = score + bonus
-
-    return clean_score(
-        score
-    )
-
-
-# ============================================================
-# APPLY AI RESULT
+# Apply AI Result
 # ============================================================
 
 def apply_ai_analysis(
@@ -1270,21 +1143,9 @@ def apply_ai_analysis(
     analysis
 ):
 
-    # ========================================================
-    # AI UNAVAILABLE
-    # ========================================================
-
     if not analysis:
 
-        fallback_score = (
-            calculate_python_fallback_score(
-                job
-            )
-        )
-
-        job["match_score"] = (
-            fallback_score
-        )
+        job["match_score"] = 0
 
         job["title_score"] = 0
 
@@ -1298,51 +1159,27 @@ def apply_ai_analysis(
 
         job["leadership_score"] = 0
 
-        # ----------------------------------------------------
-        # Important:
-        # Do NOT pretend this is an AI score.
-        # ----------------------------------------------------
-
         job["match_level"] = (
-            "Python Match"
+            "AI Analysis Unavailable"
         )
 
         job["match_reason"] = (
-            "AI analysis was unavailable. "
-            "This score is based on Python skill matching "
-            "and transferable skills only."
+            "The AI matching service was "
+            "temporarily unavailable. "
+            "Python skill matching is still available."
         )
 
         job["ai_ranking_reason"] = ""
 
-        job["strengths"] = (
-            job.get(
-                "matched_skills",
-                []
-            )
-        )
+        job["strengths"] = []
 
-        job["gaps"] = (
-            job.get(
-                "missing_skills",
-                []
-            )
-        )
+        job["gaps"] = []
 
-        job["recommendation"] = (
-            job.get(
-                "cv_enhancement",
-                ""
-            )
-        )
+        job["recommendation"] = ""
 
         job["ai_analyzed"] = False
 
         return job
-
-    # ========================================================
-    # AI RESULT AVAILABLE
-    # ========================================================
 
     job["match_score"] = clean_score(
         analysis.get(
@@ -1460,7 +1297,7 @@ def apply_ai_analysis(
 
 
 # ============================================================
-# MAIN JOB MATCHING
+# Main Job Matching
 # ============================================================
 
 def match_jobs(
@@ -1468,26 +1305,17 @@ def match_jobs(
     jobs
 ):
 
+    if not cv_text:
+
+        return jobs or []
+
     if not jobs:
 
         return []
 
-    # --------------------------------------------------------
-    # No CV
-    # --------------------------------------------------------
-
-    if not cv_text:
-
-        print(
-            "No CV provided. "
-            "Skipping job matching."
-        )
-
-        return jobs
-
     # ========================================================
     # STEP 1
-    # Python skill analysis
+    # Python analysis
     # ========================================================
 
     jobs = prepare_python_analysis(
@@ -1503,29 +1331,25 @@ def match_jobs(
     # AI batch analysis
     # ========================================================
 
-    analysis_map = (
-        analyze_all_jobs_with_ai(
+    analysis_map = analyze_all_jobs_with_ai(
 
-            cv_text,
+        cv_text,
 
-            jobs
+        jobs
 
-        )
     )
 
     # ========================================================
     # STEP 3
-    # Apply AI / fallback analysis
+    # Apply AI
     # ========================================================
 
     for index, job in enumerate(
         jobs
     ):
 
-        analysis = (
-            analysis_map.get(
-                index
-            )
+        analysis = analysis_map.get(
+            index
         )
 
         apply_ai_analysis(
@@ -1538,7 +1362,7 @@ def match_jobs(
 
     # ========================================================
     # STEP 4
-    # Sort by match score
+    # Sort
     # ========================================================
 
     jobs.sort(
@@ -1554,7 +1378,7 @@ def match_jobs(
 
     # ========================================================
     # STEP 5
-    # Assign rank AFTER sorting
+    # Rank
     # ========================================================
 
     for rank, job in enumerate(
@@ -1585,15 +1409,14 @@ def match_jobs(
     ])
 
     unavailable_count = (
+
         len(jobs)
         -
         analyzed_count
+
     )
 
-    print(
-        ""
-    )
-
+    print("")
     print(
         "=================================================="
     )
