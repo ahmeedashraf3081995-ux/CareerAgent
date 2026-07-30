@@ -1,14 +1,7 @@
 from src.scrapers.linkedin_scraper import scrape_linkedin
-
 from src.services.title_expander import expand_titles
-
 from src.services.description_loader import load_descriptions
-
 from src.services.job_pre_filter import pre_filter_jobs
-
-from src.services.job_matcher import match_jobs
-
-from src.services.job_ranker import rank_jobs_with_ai
 
 
 # ============================================================
@@ -21,32 +14,28 @@ def clean_jobs(jobs):
 
     seen = set()
 
-
     for job in jobs:
 
         key = (
-
             job.get(
                 "job_title",
                 ""
-            ).lower()
+            ).lower().strip()
 
-            +
+            + "|"
 
-            job.get(
+            + job.get(
                 "company",
                 ""
-            ).lower()
+            ).lower().strip()
 
-            +
+            + "|"
 
-            job.get(
+            + job.get(
                 "location",
                 ""
-            ).lower()
-
+            ).lower().strip()
         )
-
 
         if key not in seen:
 
@@ -57,7 +46,6 @@ def clean_jobs(jobs):
             unique.append(
                 job
             )
-
 
     return unique
 
@@ -78,7 +66,6 @@ def extract_job_filters(jobs):
 
     }
 
-
     for job in jobs:
 
         title = job.get(
@@ -96,27 +83,35 @@ def extract_job_filters(jobs):
             ""
         )
 
-
-        if title and title not in filters["titles"]:
+        if (
+            title
+            and
+            title not in filters["titles"]
+        ):
 
             filters["titles"].append(
                 title
             )
 
-
-        if company and company not in filters["companies"]:
+        if (
+            company
+            and
+            company not in filters["companies"]
+        ):
 
             filters["companies"].append(
                 company
             )
 
-
-        if location and location not in filters["locations"]:
+        if (
+            location
+            and
+            location not in filters["locations"]
+        ):
 
             filters["locations"].append(
                 location
             )
-
 
     return filters
 
@@ -129,9 +124,8 @@ def search_jobs(parameters):
 
     results = []
 
-
     # ========================================================
-    # Parameters
+    # Read Parameters
     # ========================================================
 
     job_titles = parameters.get(
@@ -139,27 +133,23 @@ def search_jobs(parameters):
         []
     )
 
-
     cities = parameters.get(
         "cities",
         []
     )
-
 
     companies = parameters.get(
         "companies",
         []
     )
 
-
     cv_text = parameters.get(
         "cv_text",
         ""
     )
 
-
     # ========================================================
-    # Default Search
+    # Default Search Titles
     # ========================================================
 
     if not job_titles:
@@ -172,7 +162,6 @@ def search_jobs(parameters):
 
         ]
 
-
     # ========================================================
     # Expand Titles
     # ========================================================
@@ -181,7 +170,6 @@ def search_jobs(parameters):
         job_titles
     )
 
-
     print(
         "Expanded titles:"
     )
@@ -189,7 +177,6 @@ def search_jobs(parameters):
     print(
         job_titles
     )
-
 
     # ========================================================
     # Default Cities
@@ -201,9 +188,8 @@ def search_jobs(parameters):
             "Dubai"
         ]
 
-
     # ========================================================
-    # LinkedIn Scraping
+    # LinkedIn Search
     # ========================================================
 
     for title in job_titles:
@@ -214,23 +200,37 @@ def search_jobs(parameters):
                 f"Searching {title} - {city}"
             )
 
+            try:
 
-            jobs = scrape_linkedin(
+                jobs = scrape_linkedin(
 
-                keyword=title,
+                    keyword=title,
 
-                location=city,
+                    location=city,
 
-                pages=5
+                    pages=5
 
-            )
+                )
 
+            except Exception as e:
+
+                print(
+                    f"LinkedIn search failed "
+                    f"for {title} - {city}:",
+                    e
+                )
+
+                continue
+
+            if not jobs:
+
+                continue
+
+            # =================================================
+            # Company Filter
+            # =================================================
 
             for job in jobs:
-
-                # --------------------------------------------
-                # Company Filter
-                # --------------------------------------------
 
                 if companies:
 
@@ -239,34 +239,36 @@ def search_jobs(parameters):
                         ""
                     ).lower()
 
-
                     allowed = False
-
 
                     for company in companies:
 
-                        if company.lower() in company_name:
+                        if (
+                            company.lower()
+                            in
+                            company_name
+                        ):
 
                             allowed = True
 
                             break
 
-
                     if not allowed:
 
                         continue
-
 
                 results.append(
                     job
                 )
 
+    # ========================================================
+    # Raw Jobs
+    # ========================================================
 
     print(
         "Raw jobs:",
         len(results)
     )
-
 
     # ========================================================
     # Remove Duplicates
@@ -276,117 +278,81 @@ def search_jobs(parameters):
         results
     )
 
-
     print(
         "Unique jobs:",
         len(results)
     )
 
-
     # ========================================================
     # Smart Pre Filter
     # ========================================================
 
-    if cv_text:
+    if cv_text and results:
 
-        results = pre_filter_jobs(
+        try:
 
-            cv_text,
+            results = pre_filter_jobs(
 
-            results,
+                cv_text,
 
-            limit=100
+                results,
 
-        )
+                limit=100
 
+            )
+
+        except Exception as e:
+
+            print(
+                "Pre-filter failed:",
+                e
+            )
 
         print(
             "After relevance filter:",
             len(results)
         )
 
-
     # ========================================================
     # Load Job Descriptions
     # ========================================================
 
-    results = load_descriptions(
-        results
-    )
+    if results:
 
+        try:
+
+            results = load_descriptions(
+                results
+            )
+
+        except Exception as e:
+
+            print(
+                "Description loading failed:",
+                e
+            )
+
+    # ========================================================
+    # Description Statistics
+    # ========================================================
 
     descriptions_loaded = len(
 
         [
-
             job
-
             for job in results
-
             if job.get(
                 "description",
                 ""
             )
-
         ]
 
     )
-
 
     print(
         "Descriptions loaded:",
         descriptions_loaded
     )
-
-
-    # ========================================================
-    # AI JOB MATCHING
-    # ========================================================
-
-    if cv_text and results:
-
-        print(
-            "Starting AI job matching..."
-        )
-
-
- results = match_jobs(
-
-    cv_text,
-    results
-
-)
-
-
-        print(
-            "AI job matching finished."
-        )
-
-
-    # ========================================================
-    # AI FINAL RANKING
-    # ========================================================
-
-    if cv_text and results:
-
-        print(
-            "Starting AI final ranking..."
-        )
-
-
-        results = rank_jobs_with_ai(
-
-            cv_text,
-
-            results
-
-        )
-
-
-        print(
-            "AI final ranking finished."
-        )
-
 
     # ========================================================
     # Save Filters
@@ -396,7 +362,6 @@ def search_jobs(parameters):
 
         import streamlit as st
 
-
         st.session_state.job_filters = (
 
             extract_job_filters(
@@ -405,7 +370,6 @@ def search_jobs(parameters):
 
         )
 
-
     except Exception as e:
 
         print(
@@ -413,15 +377,8 @@ def search_jobs(parameters):
             e
         )
 
-
     # ========================================================
-    # Final Results
+    # Return
     # ========================================================
-
-    print(
-        "Final jobs:",
-        len(results)
-    )
-
 
     return results
