@@ -7,3 +7,5 @@ python-dotenv
 beautifulsoup4
 requests
 playwright
+python-docx
+openai
