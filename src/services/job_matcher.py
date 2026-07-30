@@ -11,11 +11,11 @@ from src.services.llm import (
 # Configuration
 # ============================================================
 
-AI_BATCH_SIZE = 4
+AI_BATCH_SIZE = 1
 
-AI_BATCH_RETRIES = 2
+AI_BATCH_RETRIES = 0
 
-AI_SINGLE_JOB_RETRIES = 2
+AI_SINGLE_JOB_RETRIES = 1
 
 
 # ============================================================
