@@ -3,69 +3,47 @@ import streamlit as st
 from src.services.application_tracker import save_job
 
 
-
-
 def show_job_card(job):
 
-
     score = job.get(
-
         "match_score",
-
         0
-
     )
-
 
     level = job.get(
-
         "match_level",
-
-        "Not ranked"
-
+        "Not Ranked"
     )
-
-
 
     title = job.get(
-
         "job_title",
-
         "Unknown Position"
-
     )
-
 
     company = job.get(
-
         "company",
-
         "Unknown Company"
-
     )
-
 
     location = job.get(
-
         "location",
-
         ""
-
     )
-
-
 
     url = job.get(
-
         "url",
-
         ""
+    )
 
+    posted_date = job.get(
+        "posted_date",
+        ""
     )
 
 
-
-    # Header
+    # ==================================================
+    # Job Header
+    # ==================================================
 
     st.subheader(
         title
@@ -82,21 +60,32 @@ def show_job_card(job):
     )
 
 
+    if posted_date:
+
+        st.write(
+            f"📅 Posted: {posted_date}"
+        )
+
+    else:
+
+        st.write(
+            "📅 Posting Date Unavailable"
+        )
+
+
+    # ==================================================
+    # Match Score
+    # ==================================================
 
     col1, col2 = st.columns(2)
-
 
 
     with col1:
 
         st.metric(
-
             "🎯 Match Score",
-
             f"{score}%"
-
         )
-
 
 
     with col2:
@@ -106,27 +95,42 @@ def show_job_card(job):
         )
 
 
+    # ==================================================
+    # CV-Based Job Brief
+    # ==================================================
+
+    brief = job.get(
+        "cv_job_brief",
+        ""
+    )
 
 
+    if brief:
 
-    # Explanation
+        with st.expander(
+            "📝 CV-Based Job Brief",
+            expanded=True
+        ):
+
+            st.write(
+                brief
+            )
+
+
+    # ==================================================
+    # Why This Matches
+    # ==================================================
 
     reason = job.get(
-
         "match_reason",
-
         ""
-
     )
 
 
     if reason:
 
-
         with st.expander(
-
-            "🤖 Why this matches"
-
+            "🤖 Why This Matches"
         ):
 
             st.write(
@@ -134,17 +138,14 @@ def show_job_card(job):
             )
 
 
-
-
-
+    # ==================================================
     # Skills
+    # ==================================================
 
     col1, col2 = st.columns(2)
 
 
-
     with col1:
-
 
         st.success(
             "✅ Matching Skills"
@@ -152,11 +153,8 @@ def show_job_card(job):
 
 
         skills = job.get(
-
             "matched_skills",
-
             []
-
         )
 
 
@@ -171,15 +169,11 @@ def show_job_card(job):
         else:
 
             st.write(
-                "No skills detected"
+                "No Skills Detected"
             )
 
 
-
-
-
     with col2:
-
 
         st.warning(
             "⚠️ Missing Skills"
@@ -187,11 +181,8 @@ def show_job_card(job):
 
 
         missing = job.get(
-
             "missing_skills",
-
             []
-
         )
 
 
@@ -206,28 +197,45 @@ def show_job_card(job):
         else:
 
             st.write(
-                "No missing skills"
+                "No Missing Skills Detected 🎯"
             )
 
 
+    # ==================================================
+    # CV Improvement Suggestions
+    # ==================================================
+
+    suggestions = job.get(
+        "cv_suggestions",
+        []
+    )
 
 
+    if suggestions:
 
-    # Description
+        with st.expander(
+            "✏️ CV Improvement Suggestions",
+            expanded=False
+        ):
+
+            for suggestion in suggestions:
+
+                st.write(
+                    f"• {suggestion}"
+                )
+
+
+    # ==================================================
+    # Job Description
+    # ==================================================
 
     with st.expander(
-
         "📄 Job Description"
-
     ):
 
-
         description = job.get(
-
             "description",
-
             ""
-
         )
 
 
@@ -240,56 +248,41 @@ def show_job_card(job):
         else:
 
             st.write(
-                "Description not available"
+                "Job Description Not Available"
             )
 
 
-
-
-
+    # ==================================================
     # Actions
+    # ==================================================
 
     col1, col2 = st.columns(2)
 
 
-
     with col1:
-
 
         if url:
 
             st.link_button(
-
                 "🔗 Apply",
-
                 url
-
             )
-
-
 
 
     with col2:
 
-
         if st.button(
-
             "❤️ Save Job",
-
             key=f"save_{url}"
-
         ):
-
 
             save_job(
                 job
             )
 
-
             st.success(
-                "Saved"
+                "Job Saved"
             )
-
 
 
     st.divider()

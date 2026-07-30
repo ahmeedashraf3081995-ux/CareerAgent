@@ -3,297 +3,201 @@ import urllib.parse
 import time
 
 
-
-def create_browser(p):
-
-    browser = p.chromium.launch(
-
-        headless=True,
-
-        executable_path="/usr/bin/chromium",
-
-        args=[
-
-            "--no-sandbox",
-
-            "--disable-dev-shm-usage",
-
-            "--disable-gpu"
-
-        ]
-
-    )
-
-    return browser
-
-
-
-
-
-def extract_job_details(url):
-
-    """
-    Extract LinkedIn job description
-    """
-
-    description = ""
-
-
-    try:
-
-        with sync_playwright() as p:
-
-
-            browser = create_browser(p)
-
-
-            page = browser.new_page()
-
-
-
-            page.goto(
-
-                url,
-
-                timeout=20000,
-
-                wait_until="domcontentloaded"
-
-            )
-
-
-            time.sleep(2)
-
-
-
-            selectors = [
-
-                ".description__text",
-
-                ".show-more-less-html__markup",
-
-                ".jobs-description__content"
-
-            ]
-
-
-
-            for selector in selectors:
-
-
-                element = page.locator(
-
-                    selector
-
-                ).first
-
-
-
-                if element.count() > 0:
-
-
-                    description = element.inner_text().strip()
-
-                    break
-
-
-
-            browser.close()
-
-
-
-    except Exception as e:
-
-
-        print(
-
-            "Description extraction error:",
-
-            e
-
-        )
-
-
-    return description
-
-
-
-
-
+# ==================================================
+# LinkedIn Job Search
+# ==================================================
 
 def scrape_linkedin(
-
     keyword="Demand Planner",
-
     location="Dubai",
-
     pages=1
-
 ):
 
-
     print(
-
         f"Searching LinkedIn: {keyword} - {location}"
-
     )
 
-
     jobs = []
-
     seen = set()
-
-
 
     with sync_playwright() as p:
 
+        browser = p.chromium.launch(
 
-        browser = create_browser(p)
+            headless=True,
 
+            executable_path="/usr/bin/chromium",
+
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu"
+            ]
+
+        )
 
         page = browser.new_page(
 
             viewport={
-
                 "width": 1920,
-
                 "height": 1080
-
             }
 
         )
 
-
-
         try:
-
 
             for page_number in range(pages):
 
-
                 start = page_number * 25
 
-
-
                 url = (
-
                     "https://www.linkedin.com/jobs/search/?keywords="
-
                     +
-
                     urllib.parse.quote(keyword)
-
                     +
-
                     "&location="
-
                     +
-
                     urllib.parse.quote(location)
-
                     +
-
                     "&start="
-
                     +
-
                     str(start)
-
                 )
-
-
 
                 print(
-
-                    f"Opening page {page_number + 1}"
-
+                    f"Opening LinkedIn page {page_number + 1}"
                 )
 
+                try:
 
+                    page.goto(
+                        url,
+                        timeout=20000,
+                        wait_until="domcontentloaded"
+                    )
 
-                page.goto(
+                except Exception as e:
 
-                    url,
+                    print(
+                        "Page loading timeout:",
+                        e
+                    )
 
-                    timeout=20000,
+                    continue
 
-                    wait_until="domcontentloaded"
-
-                )
-
-
-
+                # Give LinkedIn time to render cards
                 time.sleep(1)
 
-
-
                 cards = page.locator(
-
                     ".base-search-card"
-
                 )
-
-
 
                 count = cards.count()
 
-
-
                 print(
-
                     "Cards found:",
-
                     count
-
                 )
-
-
 
                 for i in range(count):
 
-
                     try:
-
 
                         card = cards.nth(i)
 
 
+                        # --------------------------
+                        # Job Title
+                        # --------------------------
 
                         title = card.locator(
-
                             ".base-search-card__title"
+                        ).inner_text(
+                            timeout=5000
+                        ).strip()
 
-                        ).inner_text()
 
-
+                        # --------------------------
+                        # Company
+                        # --------------------------
 
                         company = card.locator(
-
                             ".base-search-card__subtitle"
+                        ).inner_text(
+                            timeout=5000
+                        ).strip()
 
-                        ).inner_text()
 
-
+                        # --------------------------
+                        # Location
+                        # --------------------------
 
                         location_text = card.locator(
-
                             ".job-search-card__location"
+                        ).inner_text(
+                            timeout=5000
+                        ).strip()
 
-                        ).inner_text()
 
-
+                        # --------------------------
+                        # Job URL
+                        # --------------------------
 
                         link = card.locator(
-
                             "a"
-
                         ).first.get_attribute(
-
                             "href"
-
                         )
 
 
+                        # --------------------------
+                        # Posting Date
+                        # --------------------------
+
+                        posted_date = ""
+
+                        date_selectors = [
+
+                            "time",
+
+                            ".job-search-card__listdate",
+
+                            ".job-search-card__listdate--new"
+
+                        ]
+
+
+                        for selector in date_selectors:
+
+                            try:
+
+                                date_element = card.locator(
+                                    selector
+                                ).first
+
+                                if date_element.count() > 0:
+
+                                    posted_date = (
+                                        date_element
+                                        .inner_text(
+                                            timeout=2000
+                                        )
+                                        .strip()
+                                    )
+
+                                    if posted_date:
+
+                                        break
+
+                            except Exception:
+
+                                continue
+
+
+                        # --------------------------
+                        # Unique Job
+                        # --------------------------
 
                         key = (
 
@@ -310,79 +214,215 @@ def scrape_linkedin(
                         )
 
 
-
                         if key in seen:
 
                             continue
 
 
-
                         seen.add(key)
 
 
+                        # --------------------------
+                        # Save Job
+                        # --------------------------
 
                         jobs.append(
 
                             {
 
-                                "job_title": title.strip(),
+                                "job_title":
+                                    title,
 
-                                "company": company.strip(),
+                                "company":
+                                    company,
 
-                                "location": location_text.strip(),
+                                "location":
+                                    location_text,
 
-                                "url": link,
+                                "url":
+                                    link,
 
-                                "source": "LinkedIn",
+                                "source":
+                                    "LinkedIn",
 
-                                "description": ""
+                                "posted_date":
+                                    posted_date,
+
+                                "description":
+                                    ""
 
                             }
 
                         )
 
 
-
                     except Exception as e:
 
-
                         print(
-
                             "Card skipped:",
-
                             e
-
                         )
-
 
 
         except Exception as e:
 
-
             print(
-
                 "LinkedIn scraper error:",
-
                 e
-
             )
-
 
 
         finally:
 
+            browser.close()
+
+
+    print(
+        "Total collected:",
+        len(jobs)
+    )
+
+    return jobs
+
+
+
+# ==================================================
+# Extract Job Description
+# ==================================================
+
+def extract_job_details(url):
+
+    if not url:
+
+        return ""
+
+
+    description = ""
+
+
+    with sync_playwright() as p:
+
+        browser = p.chromium.launch(
+
+            headless=True,
+
+            executable_path="/usr/bin/chromium",
+
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu"
+            ]
+
+        )
+
+        page = browser.new_page(
+
+            viewport={
+                "width": 1920,
+                "height": 1080
+            }
+
+        )
+
+        try:
+
+            print(
+                f"Opening job details: {url}"
+            )
+
+
+            page.goto(
+
+                url,
+
+                timeout=15000,
+
+                wait_until="domcontentloaded"
+
+            )
+
+
+            # Give the page a short time to render
+            time.sleep(0.8)
+
+
+            # --------------------------------------
+            # Main LinkedIn description selectors
+            # --------------------------------------
+
+            selectors = [
+
+                ".show-more-less-html__markup",
+
+                ".description__text",
+
+                ".decorated-job-posting__details",
+
+                ".jobs-description__content"
+
+            ]
+
+
+            for selector in selectors:
+
+                try:
+
+                    element = page.locator(
+                        selector
+                    ).first
+
+
+                    if element.count() > 0:
+
+                        text = element.inner_text(
+                            timeout=3000
+                        ).strip()
+
+
+                        if text:
+
+                            description = text
+
+                            break
+
+                except Exception:
+
+                    continue
+
+
+            # --------------------------------------
+            # Fallback
+            # --------------------------------------
+
+            if not description:
+
+                try:
+
+                    description = page.locator(
+                        "body"
+                    ).inner_text(
+                        timeout=3000
+                    ).strip()
+
+                except Exception:
+
+                    description = ""
+
+
+        except Exception as e:
+
+            print(
+                "Job detail error:",
+                e
+            )
+
+            description = ""
+
+
+        finally:
 
             browser.close()
 
 
-
-    print(
-
-        "Total collected:",
-
-        len(jobs)
-
-    )
-
-
-    return jobs
+    return description

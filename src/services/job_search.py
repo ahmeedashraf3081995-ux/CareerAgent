@@ -4,7 +4,9 @@ from src.services.description_loader import load_descriptions
 from src.services.job_pre_filter import pre_filter_jobs
 
 
-
+# ==================================================
+# Remove Duplicate Jobs
+# ==================================================
 
 def clean_jobs(jobs):
 
@@ -17,34 +19,47 @@ def clean_jobs(jobs):
 
         key = (
 
-            job.get("job_title", "").lower()
+            job.get(
+                "job_title",
+                ""
+            ).lower()
 
             +
 
-            job.get("company", "").lower()
+            job.get(
+                "company",
+                ""
+            ).lower()
 
             +
 
-            job.get("location", "").lower()
+            job.get(
+                "location",
+                ""
+            ).lower()
 
         )
 
 
         if key not in seen:
 
-            seen.add(key)
+            seen.add(
+                key
+            )
 
-            unique.append(job)
+            unique.append(
+                job
+            )
 
 
     return unique
 
 
-
-
+# ==================================================
+# Extract Filters
+# ==================================================
 
 def extract_job_filters(jobs):
-
 
     filters = {
 
@@ -57,90 +72,84 @@ def extract_job_filters(jobs):
     }
 
 
-
     for job in jobs:
 
+        title = job.get(
+            "job_title",
+            ""
+        )
 
-        title = job.get("job_title", "")
+        company = job.get(
+            "company",
+            ""
+        )
 
-        company = job.get("company", "")
-
-        location = job.get("location", "")
-
+        location = job.get(
+            "location",
+            ""
+        )
 
 
         if title and title not in filters["titles"]:
 
-            filters["titles"].append(title)
-
+            filters["titles"].append(
+                title
+            )
 
 
         if company and company not in filters["companies"]:
 
-            filters["companies"].append(company)
-
+            filters["companies"].append(
+                company
+            )
 
 
         if location and location not in filters["locations"]:
 
-            filters["locations"].append(location)
-
+            filters["locations"].append(
+                location
+            )
 
 
     return filters
 
 
-
-
-
+# ==================================================
+# Search Jobs
+# ==================================================
 
 def search_jobs(parameters):
-
 
     results = []
 
 
-
     job_titles = parameters.get(
-
         "job_titles",
-
         []
-
     )
 
 
     cities = parameters.get(
-
         "cities",
-
         []
-
     )
 
 
     companies = parameters.get(
-
         "companies",
-
         []
-
     )
 
 
     cv_text = parameters.get(
-
         "cv_text",
-
         ""
-
     )
 
 
-
-
-
-    # Default titles
+    # ==================================================
+    # Default Search
+    # ==================================================
 
     if not job_titles:
 
@@ -153,51 +162,46 @@ def search_jobs(parameters):
         ]
 
 
-
-
-
-    # Expand titles
+    # ==================================================
+    # Expand Titles
+    # ==================================================
 
     job_titles = expand_titles(
-
         job_titles
-
     )
 
 
+    print(
+        "Expanded titles:"
+    )
+
+    print(
+        job_titles
+    )
 
 
+    # ==================================================
+    # Default Cities
+    # ==================================================
 
     if not cities:
 
         cities = [
-
             "Dubai"
-
         ]
 
 
-
-
-
-
-
-    # ==========================
+    # ==================================================
     # LinkedIn Search
-    # ==========================
+    # ==================================================
 
     for title in job_titles:
 
-
         for city in cities:
 
-
             print(
-
                 f"Searching {title} - {city}"
-
             )
-
 
 
             jobs = scrape_linkedin(
@@ -211,29 +215,24 @@ def search_jobs(parameters):
             )
 
 
-
             for job in jobs:
 
+                # ----------------------------------
+                # Company Filter
+                # ----------------------------------
 
                 if companies:
 
-
                     company_name = job.get(
-
                         "company",
-
                         ""
-
                     ).lower()
-
 
 
                     allowed = False
 
 
-
                     for company in companies:
-
 
                         if company.lower() in company_name:
 
@@ -242,83 +241,42 @@ def search_jobs(parameters):
                             break
 
 
-
                     if not allowed:
 
                         continue
 
 
-
-                results.append(job)
-
-
-
-
+                results.append(
+                    job
+                )
 
 
     print(
-
         "Raw jobs:",
-
         len(results)
-
     )
 
 
+    # ==================================================
+    # Remove Duplicates
+    # ==================================================
 
-
-
-    # Remove duplicates
-
-    results = clean_jobs(results)
-
+    results = clean_jobs(
+        results
+    )
 
 
     print(
-
         "Unique jobs:",
-
         len(results)
-
     )
 
 
-
-
-
-    # ==========================
-    # Load descriptions FIRST
-    # ==========================
-
-    results = load_descriptions(
-
-        results,
-
-        limit=50
-
-    )
-
-
-
-    print(
-
-        "Descriptions loaded:",
-
-        len(results)
-
-    )
-
-
-
-
-
-
-    # ==========================
+    # ==================================================
     # Smart Pre Filter
-    # ==========================
+    # ==================================================
 
     if cv_text:
-
 
         results = pre_filter_jobs(
 
@@ -331,47 +289,62 @@ def search_jobs(parameters):
         )
 
 
-
         print(
-
             "After relevance filter:",
-
             len(results)
-
         )
 
 
+    # ==================================================
+    # Load Job Descriptions
+    # ==================================================
+
+    results = load_descriptions(
+
+        results,
+
+        limit=30
+
+    )
 
 
+    print(
+        "Descriptions loaded:",
+        len(
+            [
+                job
+                for job in results
+                if job.get(
+                    "description",
+                    ""
+                )
+            ]
+        )
+    )
 
 
+    # ==================================================
+    # Save Filters
+    # ==================================================
 
     try:
-
 
         import streamlit as st
 
 
-        st.session_state.job_filters = extract_job_filters(
-
-            results
-
+        st.session_state.job_filters = (
+            extract_job_filters(
+                results
+            )
         )
 
 
     except Exception as e:
 
-
         print(
-
             "Filter save skipped:",
-
             e
-
         )
-
-
-
 
 
     return results
