@@ -12,41 +12,40 @@ import os
 def launch_browser(playwright):
 
     """
-    Launch Chromium automatically.
+    Launch Chromium.
 
-    On Linux / Streamlit Cloud:
-    use the system Chromium installed through packages.txt.
+    Streamlit Cloud / Linux:
+        Use system Chromium installed through packages.txt.
 
-    On Windows:
-    use Playwright's bundled Chromium.
-
-    This keeps the application compatible with both
-    local development and Streamlit Cloud.
+    Windows:
+        Use Playwright's bundled Chromium.
     """
 
     system_chromium = None
 
-    possible_browsers = [
-        "chromium",
-        "chromium-browser",
-        "google-chrome"
-    ]
+    # Streamlit Cloud / Linux
+    if os.name != "nt":
 
-    for browser_name in possible_browsers:
+        possible_browsers = [
+            "chromium",
+            "chromium-browser",
+            "google-chrome"
+        ]
 
-        browser_path = shutil.which(
-            browser_name
-        )
+        for browser_name in possible_browsers:
 
-        if browser_path:
+            browser_path = shutil.which(
+                browser_name
+            )
 
-            system_chromium = browser_path
+            if browser_path:
 
-            break
+                system_chromium = browser_path
 
+                break
 
     # ========================================================
-    # Linux / Streamlit Cloud
+    # System Chromium
     # ========================================================
 
     if system_chromium:
@@ -65,19 +64,15 @@ def launch_browser(playwright):
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
                 "--disable-gpu",
-                "--disable-setuid-sandbox"
+                "--disable-setuid-sandbox",
+                "--disable-software-rasterizer"
             ]
 
         )
 
-
     # ========================================================
-    # Windows / Local Development
+    # Playwright Chromium
     # ========================================================
-
-    print(
-        "System Chromium not found."
-    )
 
     print(
         "Using Playwright Chromium."
@@ -114,7 +109,6 @@ def scrape_linkedin(
 
     seen = set()
 
-
     with sync_playwright() as p:
 
         browser = launch_browser(p)
@@ -134,7 +128,6 @@ def scrape_linkedin(
 
                 start = page_number * 25
 
-
                 url = (
                     "https://www.linkedin.com/jobs/search/?keywords="
                     +
@@ -149,11 +142,9 @@ def scrape_linkedin(
                     str(start)
                 )
 
-
                 print(
                     f"Opening LinkedIn page {page_number + 1}"
                 )
-
 
                 try:
 
@@ -176,23 +167,18 @@ def scrape_linkedin(
 
                     continue
 
-
                 time.sleep(1)
-
 
                 cards = page.locator(
                     ".base-search-card"
                 )
 
-
                 count = cards.count()
-
 
                 print(
                     "Cards found:",
                     count
                 )
-
 
                 for i in range(count):
 
@@ -200,53 +186,31 @@ def scrape_linkedin(
 
                         card = cards.nth(i)
 
-
                         title = card.locator(
-
                             ".base-search-card__title"
-
                         ).inner_text(
-
                             timeout=5000
-
                         ).strip()
-
 
                         company = card.locator(
-
                             ".base-search-card__subtitle"
-
                         ).inner_text(
-
                             timeout=5000
-
                         ).strip()
-
 
                         location_text = card.locator(
-
                             ".job-search-card__location"
-
                         ).inner_text(
-
                             timeout=5000
-
                         ).strip()
 
-
                         link = card.locator(
-
                             "a"
-
                         ).first.get_attribute(
-
                             "href"
-
                         )
 
-
                         posted_date = ""
-
 
                         date_selectors = [
 
@@ -258,69 +222,47 @@ def scrape_linkedin(
 
                         ]
 
-
                         for selector in date_selectors:
 
                             try:
 
                                 date_element = card.locator(
-
                                     selector
-
                                 ).first
-
 
                                 if date_element.count() > 0:
 
                                     posted_date = (
-
                                         date_element
-
                                         .inner_text(
-
                                             timeout=2000
-
                                         )
-
                                         .strip()
-
                                     )
-
 
                                     if posted_date:
 
                                         break
 
-
                             except Exception:
 
                                 continue
 
-
                         key = (
-
                             title.lower()
-
                             +
-
                             company.lower()
-
                             +
-
                             location_text.lower()
-
                         )
-
 
                         if key in seen:
 
                             continue
 
-
                         seen.add(
                             key
                         )
-
 
                         jobs.append({
 
@@ -347,14 +289,12 @@ def scrape_linkedin(
 
                         })
 
-
                     except Exception as e:
 
                         print(
                             "Card skipped:",
                             e
                         )
-
 
         except Exception as e:
 
@@ -363,17 +303,14 @@ def scrape_linkedin(
                 e
             )
 
-
         finally:
 
             browser.close()
-
 
     print(
         "Total collected:",
         len(jobs)
     )
-
 
     return jobs
 
@@ -388,9 +325,7 @@ def extract_job_details(url):
 
         return ""
 
-
     description = ""
-
 
     with sync_playwright() as p:
 
@@ -405,13 +340,11 @@ def extract_job_details(url):
 
         )
 
-
         try:
 
             print(
                 f"Opening job details: {url}"
             )
-
 
             page.goto(
 
@@ -423,9 +356,7 @@ def extract_job_details(url):
 
             )
 
-
             time.sleep(0.8)
-
 
             selectors = [
 
@@ -439,26 +370,19 @@ def extract_job_details(url):
 
             ]
 
-
             for selector in selectors:
 
                 try:
 
                     element = page.locator(
-
                         selector
-
                     ).first
-
 
                     if element.count() > 0:
 
                         text = element.inner_text(
-
                             timeout=3000
-
                         ).strip()
-
 
                         if text:
 
@@ -466,30 +390,23 @@ def extract_job_details(url):
 
                             break
 
-
                 except Exception:
 
                     continue
-
 
             if not description:
 
                 try:
 
                     description = page.locator(
-
                         "body"
-
                     ).inner_text(
-
                         timeout=3000
-
                     ).strip()
 
                 except Exception:
 
                     description = ""
-
 
         except Exception as e:
 
@@ -500,10 +417,8 @@ def extract_job_details(url):
 
             description = ""
 
-
         finally:
 
             browser.close()
-
 
     return description
